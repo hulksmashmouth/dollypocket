@@ -11,7 +11,7 @@ export default function App() {
       <StatusBar style="dark" />
       <View style={styles.background}>
         <View style={styles.dollAnchor} pointerEvents="none">
-          <DollyDoll size={90} />
+          <DollyDoll size={130} />
         </View>
         <ChatScreen />
       </View>
