@@ -1,75 +1,82 @@
 import Svg, { Circle, Ellipse, Path } from 'react-native-svg';
 
-// A small original illustration in the spirit of the early-2000s "dollmaker"
-// web-avatar mood board — tall, slender fashion-figure proportions, long
-// hair, a glam outfit — not a copy of any reference image, just the same
-// vibe, tailored to Dolly Parton's actual look: big platinum hair,
-// rhinestone-sparkle fit, boots. Purely decorative background flourish.
+// A small original illustration in the spirit of the early-2000s "dollz"
+// web-avatar mood board — flat cel-shaded color blocking, a rounder face
+// with a defined chin, big diagonal side-swept bangs, a hand-on-hip pose,
+// fitted halter top + flared low-rise pants, platform boots — not a copy of
+// any reference image, just the same genre. The one deliberate swap: Dolly
+// Parton's actual signature is a huge teased bouffant, so that replaces the
+// sleek hair those dolls usually have. Purely decorative background flourish.
 export function DollyDoll({ size = 90 }: { size?: number }) {
   return (
     <Svg width={size} height={(size * 240) / 100} viewBox="0 0 100 240" pointerEvents="none">
-      {/* long hair, back layer, flowing past the waist */}
-      <Path
-        d="M28 30 Q20 70 24 130 Q26 150 34 150 Q30 100 36 60 Z"
-        fill="#f7e7b0"
-      />
-      <Path
-        d="M72 30 Q80 70 76 130 Q74 150 66 150 Q70 100 64 60 Z"
-        fill="#f7e7b0"
-      />
-      <Ellipse cx="50" cy="34" rx="24" ry="22" fill="#f7e7b0" />
+      {/* big teased bouffant — oversized, rounded, built from overlapping
+          lobes to read as "volume" rather than a smooth cap */}
+      <Ellipse cx="50" cy="26" rx="30" ry="26" fill="#f7e7b0" />
+      <Ellipse cx="26" cy="34" rx="14" ry="18" fill="#f7e7b0" />
+      <Ellipse cx="74" cy="34" rx="14" ry="18" fill="#f7e7b0" />
+      <Ellipse cx="50" cy="10" rx="20" ry="14" fill="#f7e7b0" />
+      {/* hair falling past the shoulders, both sides */}
+      <Path d="M24 40 Q18 70 24 100 Q28 104 32 100 Q26 70 32 44 Z" fill="#f7e7b0" />
+      <Path d="M76 40 Q82 70 76 100 Q72 104 68 100 Q74 70 68 44 Z" fill="#f7e7b0" />
 
-      {/* face */}
-      <Circle cx="50" cy="38" r="14" fill="#ffd9b0" />
+      {/* face — oval with a defined, slightly pointed chin */}
+      <Path
+        d="M37 30 Q37 46 50 54 Q63 46 63 30 Q63 18 50 18 Q37 18 37 30 Z"
+        fill="#ffd9b0"
+      />
 
-      {/* hair front, teased bangs/crown */}
-      <Path d="M27 32 Q50 8 73 32 Q73 20 50 16 Q27 20 27 32 Z" fill="#f2c94c" />
+      {/* big diagonal side-swept bangs crossing the forehead */}
+      <Path d="M35 26 Q46 14 66 22 Q60 24 52 22 Q42 22 35 30 Z" fill="#f2c94c" />
 
       {/* face features */}
-      <Circle cx="44" cy="39" r="1.6" fill="#3a2b1a" />
-      <Circle cx="56" cy="39" r="1.6" fill="#3a2b1a" />
-      <Path d="M45 46 Q50 49 55 46" stroke="#c9457a" strokeWidth={1.8} fill="none" strokeLinecap="round" />
+      <Path d="M41 32 Q44 30 47 32" stroke="#3a2b1a" strokeWidth={1.3} fill="none" strokeLinecap="round" />
+      <Path d="M53 32 Q56 30 59 32" stroke="#3a2b1a" strokeWidth={1.3} fill="none" strokeLinecap="round" />
+      <Circle cx="40" cy="40" r="3" fill="#ff9ec7" opacity={0.5} />
+      <Circle cx="60" cy="40" r="3" fill="#ff9ec7" opacity={0.5} />
+      <Path d="M45 45 Q50 49 55 45" stroke="#c9457a" strokeWidth={2} fill="none" strokeLinecap="round" />
 
       {/* neck */}
-      <Path d="M46 50 L46 58 L54 58 L54 50 Z" fill="#ffd9b0" />
+      <Path d="M45 52 L45 60 L55 60 L55 52 Z" fill="#ffd9b0" />
 
-      {/* torso: fitted glam top, hourglass silhouette down to the waist */}
+      {/* fitted halter top, midriff-baring */}
+      <Path d="M34 62 Q50 56 66 62 L62 92 Q50 98 38 92 Z" fill="#fb60ad" />
+
+      {/* low-rise flared pants, waistband at the hips */}
       <Path
-        d="M34 60 Q50 54 66 60 L64 96 Q50 104 36 96 Z"
-        fill="#fb60ad"
+        d="M38 96 L62 96 L68 150 Q60 156 50 154 Q40 156 32 150 Z"
+        fill="#b870eb"
       />
+      {/* bell-bottom flares */}
+      <Path d="M32 150 L22 205 L42 205 L44 156 Z" fill="#b870eb" />
+      <Path d="M68 150 L78 205 L58 205 L56 156 Z" fill="#b870eb" />
 
-      {/* mini skirt flaring from the waist */}
-      <Path d="M36 96 Q50 104 64 96 L72 128 Q50 136 28 128 Z" fill="#f655f6" />
+      {/* sparkle accents */}
+      <Path d="M46 74 l2 4 l4 1 l-4 1 l-2 4 l-2 -4 l-4 -1 l4 -1 Z" fill="#ffffff" />
+      <Circle cx="50" cy="120" r="1.6" fill="#ffffff" />
 
-      {/* sparkle accents on the outfit */}
-      <Path d="M44 74 l2.5 5 l5 1 l-5 1.5 l-2.5 5 l-1.5 -5 l-5 -1.5 l5 -1 Z" fill="#ffffff" />
-      <Circle cx="58" cy="112" r="1.8" fill="#ffffff" />
-      <Circle cx="42" cy="118" r="1.4" fill="#ffffff" />
-
-      {/* arms, slender, hands resting near the hips */}
+      {/* relaxed arm at the side */}
       <Path
-        d="M34 62 Q20 78 24 100"
+        d="M34 64 Q24 80 26 100"
         stroke="#ffd9b0"
         strokeWidth={6}
         fill="none"
         strokeLinecap="round"
       />
+      {/* other arm bent, hand on hip */}
       <Path
-        d="M66 62 Q80 78 76 100"
+        d="M66 64 Q78 72 74 88 Q70 94 62 92"
         stroke="#ffd9b0"
         strokeWidth={6}
         fill="none"
         strokeLinecap="round"
       />
 
-      {/* long slender legs */}
-      <Path d="M38 128 L34 210 L44 210 L46 130 Z" fill="#ffd9b0" />
-      <Path d="M62 128 L66 210 L56 210 L54 130 Z" fill="#ffd9b0" />
-
-      {/* go-go boots */}
-      <Path d="M32 206 h14 v18 h-14 Z" fill="#8a2ba8" />
-      <Path d="M54 206 h14 v18 h-14 Z" fill="#8a2ba8" />
+      {/* platform boots */}
+      <Path d="M20 200 h24 v20 h-24 Z" fill="#2e0f3d" />
+      <Path d="M56 200 h24 v20 h-24 Z" fill="#2e0f3d" />
+      <Path d="M20 216 h24 v6 h-24 Z" fill="#3a1750" />
+      <Path d="M56 216 h24 v6 h-24 Z" fill="#3a1750" />
     </Svg>
   );
 }
