@@ -1,11 +1,17 @@
 import { StatusBar } from 'expo-status-bar';
+import { useEffect } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { DollyDoll } from './src/components/DollyDoll';
 import { ChatScreen } from './src/screens/ChatScreen';
 import { colors } from './src/theme';
+import { injectWebScrollbarStyles } from './src/webScrollbar';
 
 export default function App() {
+  useEffect(() => {
+    injectWebScrollbarStyles();
+  }, []);
+
   return (
     <SafeAreaProvider>
       <StatusBar style="dark" />

@@ -84,7 +84,11 @@ export function SettingsModal({
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet">
       <View style={styles.container}>
-        <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.scrollContent}>
+        <ScrollView
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={styles.scrollContent}
+          indicatorStyle="black"
+        >
           <Text style={styles.title}>Settings</Text>
 
           <ModelPicker baseUrl={baseUrl} value={modelInput} onChange={setModelInput} />
