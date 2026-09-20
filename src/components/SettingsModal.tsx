@@ -1,4 +1,3 @@
-import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -14,8 +13,7 @@ import {
 import { listModels, OllamaError } from '../api/ollama';
 import { checkRagHealth } from '../api/rag';
 import { checkTtsHealth, TtsError } from '../api/tts';
-import { accentGradient, bgGradient, colors, radii, spacing } from '../theme';
-import { GlassView } from './GlassView';
+import { bevel, blockFont, colors, spacing } from '../theme';
 
 interface Props {
   visible: boolean;
@@ -123,7 +121,7 @@ export function SettingsModal({
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet">
-      <LinearGradient colors={bgGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.container}>
+      <View style={styles.container}>
         <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.scrollContent}>
           <Text style={styles.title}>Settings</Text>
 
@@ -172,8 +170,8 @@ export function SettingsModal({
             <Switch
               value={ragEnabledInput}
               onValueChange={setRagEnabledInput}
-              trackColor={{ false: colors.glassFillStrong, true: accentGradient[0] }}
-              thumbColor="#fff"
+              trackColor={{ false: colors.inputBg, true: colors.accent }}
+              thumbColor={colors.textPrimary}
             />
           </View>
 
@@ -216,8 +214,8 @@ export function SettingsModal({
             <Switch
               value={ttsEnabledInput}
               onValueChange={setTtsEnabledInput}
-              trackColor={{ false: colors.glassFillStrong, true: accentGradient[0] }}
-              thumbColor="#fff"
+              trackColor={{ false: colors.inputBg, true: colors.accent }}
+              thumbColor={colors.textPrimary}
             />
           </View>
 
@@ -249,13 +247,11 @@ export function SettingsModal({
         </ScrollView>
 
         <View style={styles.actions}>
-          <GlassView style={styles.actionButton} intensity={30}>
-            <Pressable style={styles.actionButtonInner} onPress={onClose}>
-              <Text style={styles.actionButtonText}>Cancel</Text>
-            </Pressable>
-          </GlassView>
+          <Pressable style={[styles.actionButton, styles.cancelButton]} onPress={onClose}>
+            <Text style={styles.actionButtonText}>Cancel</Text>
+          </Pressable>
           <Pressable
-            style={styles.saveButtonWrapper}
+            style={[styles.actionButton, styles.saveButton]}
             onPress={() =>
               onSave(
                 urlInput.trim(),
@@ -267,17 +263,10 @@ export function SettingsModal({
               )
             }
           >
-            <LinearGradient
-              colors={accentGradient}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.actionButtonInner}
-            >
-              <Text style={[styles.actionButtonText, styles.saveButtonText]}>Save</Text>
-            </LinearGradient>
+            <Text style={styles.actionButtonText}>Save</Text>
           </Pressable>
         </View>
-      </LinearGradient>
+      </View>
     </Modal>
   );
 }
@@ -285,6 +274,7 @@ export function SettingsModal({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: colors.bg,
     padding: spacing.xl,
     paddingTop: 24,
   },
@@ -294,11 +284,13 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 22,
     fontWeight: '700',
+    fontFamily: blockFont,
     marginBottom: 20,
     color: colors.textPrimary,
   },
   label: {
     fontSize: 13,
+    fontFamily: blockFont,
     color: colors.textSecondary,
     marginBottom: 6,
     marginTop: 16,
@@ -306,40 +298,50 @@ const styles = StyleSheet.create({
   },
   input: {
     backgroundColor: colors.inputBg,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.glassBorder,
-    borderRadius: radii.sm,
+    borderWidth: bevel.width,
+    ...bevel.sunken,
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 16,
+    fontFamily: blockFont,
     color: colors.textPrimary,
   },
   testButton: {
     marginTop: 20,
-    alignItems: 'center',
+    alignSelf: 'flex-start',
+    backgroundColor: colors.panelBg,
+    borderWidth: bevel.width,
+    ...bevel.raised,
+    paddingHorizontal: 14,
     paddingVertical: 10,
   },
   testButtonText: {
-    color: colors.accentSolid,
-    fontSize: 16,
-    fontWeight: '600',
+    color: colors.textPrimary,
+    fontFamily: blockFont,
+    fontSize: 15,
+    fontWeight: '700',
   },
   testButtonTextDisabled: {
     color: colors.textMuted,
   },
   success: {
     color: colors.success,
+    fontFamily: blockFont,
     textAlign: 'center',
     marginTop: 4,
   },
   errorText: {
     color: colors.error,
+    fontFamily: blockFont,
     textAlign: 'center',
     marginTop: 4,
   },
   divider: {
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: colors.glassBorder,
+    height: 2,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderTopColor: colors.bevelDark,
+    borderBottomColor: colors.bevelLight,
     marginTop: 24,
   },
   switchRow: {
@@ -354,24 +356,22 @@ const styles = StyleSheet.create({
   },
   actionButton: {
     flex: 1,
-    borderRadius: radii.md,
-  },
-  saveButtonWrapper: {
-    flex: 1,
-    borderRadius: radii.md,
-    overflow: 'hidden',
-  },
-  actionButtonInner: {
+    borderWidth: bevel.width,
+    ...bevel.raised,
     paddingVertical: 14,
     alignItems: 'center',
     justifyContent: 'center',
   },
+  cancelButton: {
+    backgroundColor: colors.panelBg,
+  },
+  saveButton: {
+    backgroundColor: colors.accent,
+  },
   actionButtonText: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '700',
+    fontFamily: blockFont,
     color: colors.textPrimary,
-  },
-  saveButtonText: {
-    color: '#fff',
   },
 });

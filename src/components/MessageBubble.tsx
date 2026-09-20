@@ -1,11 +1,10 @@
 import { createAudioPlayer } from 'expo-audio';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { synthesizeSpeech } from '../api/tts';
-import { accentGradient, colors, radii } from '../theme';
+import { bevel, blockFont, colors } from '../theme';
 import { ChatMessage } from '../types';
-import { GlassView } from './GlassView';
+import { Panel } from './Panel';
 
 type SpeechStatus = 'idle' | 'loading' | 'playing' | 'error';
 
@@ -66,19 +65,14 @@ export function MessageBubble({ message, ttsUrl, ttsEnabled }: Props) {
   return (
     <View style={[styles.row, isUser ? styles.rowUser : styles.rowAssistant]}>
       {isUser ? (
-        <LinearGradient
-          colors={accentGradient}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={[styles.bubble, styles.bubbleUser]}
-        >
+        <View style={[styles.bubble, styles.bubbleUser]}>
           <Text style={styles.textUser}>{message.content || '…'}</Text>
-        </LinearGradient>
+        </View>
       ) : (
         <View style={styles.assistantRow}>
-          <GlassView style={[styles.bubble, styles.bubbleAssistant]}>
+          <Panel variant="raised" style={styles.bubble}>
             <Text style={styles.textAssistant}>{message.content || '…'}</Text>
-          </GlassView>
+          </Panel>
           {showSpeaker && (
             <Pressable onPress={toggleSpeech} hitSlop={10} style={styles.speakerButton}>
               {speechStatus === 'loading' ? (
@@ -115,23 +109,23 @@ const styles = StyleSheet.create({
   },
   bubble: {
     flexShrink: 1,
-    borderRadius: radii.md,
     paddingHorizontal: 14,
     paddingVertical: 10,
   },
   bubbleUser: {
     maxWidth: '80%',
-    borderBottomRightRadius: 4,
-  },
-  bubbleAssistant: {
-    borderBottomLeftRadius: 4,
+    backgroundColor: colors.accent,
+    borderWidth: bevel.width,
+    ...bevel.raised,
   },
   textUser: {
-    color: '#fff',
+    color: colors.textPrimary,
+    fontFamily: blockFont,
     fontSize: 16,
   },
   textAssistant: {
     color: colors.textPrimary,
+    fontFamily: blockFont,
     fontSize: 16,
   },
   speakerButton: {

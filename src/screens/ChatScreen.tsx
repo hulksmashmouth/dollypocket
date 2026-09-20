@@ -13,13 +13,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { streamChat, OllamaError } from '../api/ollama';
 import { searchHistory } from '../api/rag';
 import { ChatInput } from '../components/ChatInput';
-import { GlassView } from '../components/GlassView';
-import { GradientText } from '../components/GradientText';
 import { MessageBubble } from '../components/MessageBubble';
+import { Panel } from '../components/Panel';
 import { SettingsModal } from '../components/SettingsModal';
 import { SYSTEM_PROMPT } from '../persona';
 import * as settings from '../settings';
-import { colors, spacing } from '../theme';
+import { blockFont, colors, spacing } from '../theme';
 import { ChatMessage } from '../types';
 
 let nextId = 0;
@@ -138,19 +137,19 @@ export function ChatScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
-      <GlassView intensity={30} style={styles.header}>
+      <Panel variant="raised" style={styles.header}>
         <View style={styles.titleRow}>
-          <GradientText style={styles.headerTitle}>Dolly Pocket</GradientText>
-          <MaterialCommunityIcons name="butterfly" size={22} color={colors.accentSolid} />
+          <Text style={styles.headerTitle}>Dolly Pocket</Text>
+          <MaterialCommunityIcons name="butterfly" size={22} color={colors.textPrimary} />
         </View>
         <Pressable
           onPress={() => setSettingsVisible(true)}
           hitSlop={12}
           accessibilityLabel="Settings"
         >
-          <Ionicons name="settings-outline" size={24} color={colors.accentSolid} />
+          <Ionicons name="settings-outline" size={24} color={colors.textPrimary} />
         </Pressable>
-      </GlassView>
+      </Panel>
 
       <KeyboardAvoidingView
         style={styles.flex}
@@ -205,9 +204,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
-    borderTopWidth: 0,
-    borderLeftWidth: 0,
-    borderRightWidth: 0,
+    backgroundColor: colors.accent,
   },
   titleRow: {
     flexDirection: 'row',
@@ -217,6 +214,8 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 22,
     fontWeight: '800',
+    fontFamily: blockFont,
+    color: colors.textPrimary,
   },
   listContent: {
     paddingVertical: spacing.md,
@@ -225,11 +224,13 @@ const styles = StyleSheet.create({
   emptyText: {
     textAlign: 'center',
     color: colors.textMuted,
+    fontFamily: blockFont,
     marginTop: 40,
     paddingHorizontal: 32,
   },
   errorBanner: {
     color: colors.error,
+    fontFamily: blockFont,
     textAlign: 'center',
     paddingVertical: 6,
     paddingHorizontal: 16,

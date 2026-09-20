@@ -1,31 +1,47 @@
-// Pale-pink 1990s toy aesthetic (à la Polly Pocket) with lavender accents.
-// Every text/background pairing below is verified against WCAG AA (4.5:1 for
-// normal text) across all three background gradient stops — see the contrast
-// checks run while choosing these values; don't hand-tweak a color here
-// without re-checking it against every bgGradient stop it can appear on.
-export const bgGradient = ['#ffeef7', '#f6e6fb', '#e9dbf9'] as const;
-export const accentGradient = ['#d12a8a', '#9a35b8', '#6f45c7'] as const;
-
-// Solid lavender accent for icons/links that sit directly on bgGradient
-// (needs its own darker value — the accentGradient stops are tuned for white
-// text ON TOP of them, not for use as text/icon color against the pale bg).
-export const accentSolid = '#8a2ba8';
-
+// Flat pastel-pink/pastel-purple 1990s Windows UI. No gradients, no blur,
+// square corners everywhere — depth comes from a hard two-tone bevel border
+// (light top/left, dark bottom/right = "raised"; reversed = "sunken"),
+// exactly like classic Win95 buttons/panels/inputs.
+//
+// Every text/background pairing here is verified against WCAG 2.1 AA
+// (4.5:1 for normal text) — see the contrast checks run while choosing these
+// values. Don't hand-tweak a color without re-checking it.
 export const colors = {
-  bgGradient,
-  accentGradient,
-  accentSolid,
-  glassFill: 'rgba(255,255,255,0.5)',
-  glassFillStrong: 'rgba(255,255,255,0.7)',
-  glassBorder: 'rgba(138,43,168,0.35)',
-  textPrimary: '#3d1250',
-  textSecondary: '#5c2560',
-  textMuted: 'rgba(61,18,80,0.68)',
-  placeholder: 'rgba(61,18,80,0.65)',
-  success: '#0a6b45',
-  error: '#a81652',
-  inputBg: 'rgba(255,255,255,0.6)',
+  bg: '#f7d9ec',
+  panelBg: '#f7d9ec',
+  accent: '#c9a8e6',
+  bevelLight: '#ffffff',
+  bevelDark: '#2e0f3d',
+  textPrimary: '#2e0f3d',
+  textSecondary: '#4a2359',
+  textMuted: 'rgba(46,15,61,0.65)',
+  placeholder: 'rgba(46,15,61,0.6)',
+  success: '#0a6b3f',
+  error: '#9c1c4a',
+  inputBg: '#ffffff',
 };
 
-export const radii = { sm: 12, md: 18, lg: 24, pill: 999 };
+// A monospace stack reads as "blocky/computer-y" cross-platform without
+// needing to bundle an actual bitmap font (react-native-web passes this
+// straight through as a CSS font-family; native falls back to each
+// platform's built-in monospace).
+export const blockFont = 'Courier New, Courier, monospace';
+
 export const spacing = { xs: 4, sm: 8, md: 12, lg: 16, xl: 24 };
+
+// Bevel border widths/colors shared by every raised/sunken surface.
+export const bevel = {
+  width: 2,
+  raised: {
+    borderTopColor: colors.bevelLight,
+    borderLeftColor: colors.bevelLight,
+    borderBottomColor: colors.bevelDark,
+    borderRightColor: colors.bevelDark,
+  },
+  sunken: {
+    borderTopColor: colors.bevelDark,
+    borderLeftColor: colors.bevelDark,
+    borderBottomColor: colors.bevelLight,
+    borderRightColor: colors.bevelLight,
+  },
+} as const;
