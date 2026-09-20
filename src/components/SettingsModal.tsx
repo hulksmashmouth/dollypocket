@@ -124,7 +124,7 @@ export function SettingsModal({
           <View style={styles.divider} />
 
           <View style={styles.switchRow}>
-            <Text style={styles.label}>Read replies aloud</Text>
+            <Text style={styles.label}>Dolly's Voice</Text>
             <Checkbox value={ttsEnabledInput} onValueChange={setTtsEnabledInput} />
           </View>
 

@@ -23,8 +23,9 @@ export const colors = {
   inputBg: '#ffffff',
 };
 
-// Window header/titlebar fill — the one gradient in the whole theme.
-export const headerGradient = ['#fb60ad', '#f655f6'] as const;
+// Window header/titlebar fill — the one gradient in the whole theme. Ends on
+// `accent` so the header visually hands off into the rest of the UI's purple.
+export const headerGradient = ['#fb60ad', colors.accent] as const;
 
 // A monospace stack reads as "blocky/computer-y" cross-platform without
 // needing to bundle an actual bitmap font (react-native-web passes this
