@@ -1,9 +1,11 @@
+import { Ionicons } from '@expo/vector-icons';
 import { createAudioPlayer } from 'expo-audio';
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { synthesizeSpeech } from '../api/tts';
 import { bevel, blockFont, colors } from '../theme';
 import { ChatMessage } from '../types';
+import { IconButton } from './IconButton';
 import { Panel } from './Panel';
 
 type SpeechStatus = 'idle' | 'loading' | 'playing' | 'error';
@@ -74,15 +76,23 @@ export function MessageBubble({ message, ttsUrl, ttsEnabled }: Props) {
             <Text style={styles.textAssistant}>{message.content || '…'}</Text>
           </Panel>
           {showSpeaker && (
-            <Pressable onPress={toggleSpeech} hitSlop={10} style={styles.speakerButton}>
+            <IconButton size={30} onPress={toggleSpeech} style={styles.speakerButton}>
               {speechStatus === 'loading' ? (
                 <ActivityIndicator size="small" color={colors.textSecondary} />
               ) : (
-                <Text style={styles.speakerIcon}>
-                  {speechStatus === 'playing' ? '⏸' : speechStatus === 'error' ? '⚠️' : '🔊'}
-                </Text>
+                <Ionicons
+                  name={
+                    speechStatus === 'playing'
+                      ? 'pause-sharp'
+                      : speechStatus === 'error'
+                        ? 'warning-sharp'
+                        : 'volume-high-sharp'
+                  }
+                  size={16}
+                  color={colors.textPrimary}
+                />
               )}
-            </Pressable>
+            </IconButton>
           )}
         </View>
       )}
@@ -131,9 +141,5 @@ const styles = StyleSheet.create({
   speakerButton: {
     marginLeft: 6,
     marginBottom: 4,
-    padding: 4,
-  },
-  speakerIcon: {
-    fontSize: 16,
   },
 });

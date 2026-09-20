@@ -7,16 +7,19 @@
 // (4.5:1 for normal text) — see the contrast checks run while choosing these
 // values. Don't hand-tweak a color without re-checking it.
 export const colors = {
-  bg: '#f7d9ec',
-  panelBg: '#f7d9ec',
-  accent: '#c9a8e6',
+  bg: '#f4b3dc',
+  panelBg: '#f4b3dc',
+  // Header/titlebar gets its own punchier pink, distinct from the purple
+  // accent (which is reserved for buttons/icons) and from the body bg.
+  headerPink: '#f17eb8',
+  accent: '#ba8de2',
   bevelLight: '#ffffff',
   bevelDark: '#2e0f3d',
   textPrimary: '#2e0f3d',
   textSecondary: '#4a2359',
-  textMuted: 'rgba(46,15,61,0.65)',
+  textMuted: 'rgba(46,15,61,0.75)',
   placeholder: 'rgba(46,15,61,0.6)',
-  success: '#0a6b3f',
+  success: '#054d2e',
   error: '#9c1c4a',
   inputBg: '#ffffff',
 };

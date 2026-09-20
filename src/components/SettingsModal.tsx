@@ -1,19 +1,12 @@
+import Constants from 'expo-constants';
 import { useEffect, useState } from 'react';
-import {
-  ActivityIndicator,
-  Modal,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Switch,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
-import { listModels, OllamaError } from '../api/ollama';
+import { ActivityIndicator, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { checkRagHealth } from '../api/rag';
 import { checkTtsHealth, TtsError } from '../api/tts';
 import { bevel, blockFont, colors, spacing } from '../theme';
+import { Checkbox } from './Checkbox';
+import { Disclosure } from './Disclosure';
+import { ModelPicker } from './ModelPicker';
 
 interface Props {
   visible: boolean;
@@ -23,14 +16,7 @@ interface Props {
   ragEnabled: boolean;
   ttsUrl: string;
   ttsEnabled: boolean;
-  onSave: (
-    baseUrl: string,
-    model: string,
-    ragUrl: string,
-    ragEnabled: boolean,
-    ttsUrl: string,
-    ttsEnabled: boolean
-  ) => void;
+  onSave: (model: string, ragEnabled: boolean, ttsEnabled: boolean) => void;
   onClose: () => void;
 }
 
@@ -47,15 +33,9 @@ export function SettingsModal({
   onSave,
   onClose,
 }: Props) {
-  const [urlInput, setUrlInput] = useState(baseUrl);
   const [modelInput, setModelInput] = useState(model);
-  const [ragUrlInput, setRagUrlInput] = useState(ragUrl);
   const [ragEnabledInput, setRagEnabledInput] = useState(ragEnabled);
-  const [ttsUrlInput, setTtsUrlInput] = useState(ttsUrl);
   const [ttsEnabledInput, setTtsEnabledInput] = useState(ttsEnabled);
-  const [availableModels, setAvailableModels] = useState<string[]>([]);
-  const [status, setStatus] = useState<CheckStatus>('idle');
-  const [error, setError] = useState<string | null>(null);
   const [ragStatus, setRagStatus] = useState<CheckStatus>('idle');
   const [ragChunkCount, setRagChunkCount] = useState<number | null>(null);
   const [ragError, setRagError] = useState<string | null>(null);
@@ -65,39 +45,21 @@ export function SettingsModal({
 
   useEffect(() => {
     if (visible) {
-      setUrlInput(baseUrl);
       setModelInput(model);
-      setRagUrlInput(ragUrl);
       setRagEnabledInput(ragEnabled);
-      setTtsUrlInput(ttsUrl);
       setTtsEnabledInput(ttsEnabled);
-      setStatus('idle');
-      setError(null);
       setRagStatus('idle');
       setRagError(null);
       setTtsStatus('idle');
       setTtsError(null);
     }
-  }, [visible, baseUrl, model, ragUrl, ragEnabled, ttsUrl, ttsEnabled]);
-
-  const testConnection = async () => {
-    setStatus('checking');
-    setError(null);
-    try {
-      const models = await listModels(urlInput.trim());
-      setAvailableModels(models);
-      setStatus('ok');
-    } catch (err) {
-      setStatus('error');
-      setError(err instanceof OllamaError ? err.message : 'Could not connect.');
-    }
-  };
+  }, [visible, model, ragEnabled, ttsEnabled]);
 
   const testRagConnection = async () => {
     setRagStatus('checking');
     setRagError(null);
     try {
-      const { chunks } = await checkRagHealth(ragUrlInput.trim());
+      const { chunks } = await checkRagHealth(ragUrl);
       setRagChunkCount(chunks);
       setRagStatus('ok');
     } catch (err) {
@@ -110,7 +72,7 @@ export function SettingsModal({
     setTtsStatus('checking');
     setTtsError(null);
     try {
-      const { voice } = await checkTtsHealth(ttsUrlInput.trim());
+      const { voice } = await checkTtsHealth(ttsUrl);
       setTtsVoice(voice);
       setTtsStatus('ok');
     } catch (err) {
@@ -125,68 +87,14 @@ export function SettingsModal({
         <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.scrollContent}>
           <Text style={styles.title}>Settings</Text>
 
-          <Text style={styles.label}>Ollama server URL</Text>
-          <TextInput
-            style={styles.input}
-            value={urlInput}
-            onChangeText={setUrlInput}
-            placeholder="http://192.168.1.x:11434"
-            placeholderTextColor={colors.placeholder}
-            autoCapitalize="none"
-            autoCorrect={false}
-            keyboardType="url"
-          />
-
-          <Text style={styles.label}>Model</Text>
-          <TextInput
-            style={styles.input}
-            value={modelInput}
-            onChangeText={setModelInput}
-            placeholder="llama3.2"
-            placeholderTextColor={colors.placeholder}
-            autoCapitalize="none"
-            autoCorrect={false}
-          />
-
-          <Pressable style={styles.testButton} onPress={testConnection}>
-            {status === 'checking' ? (
-              <ActivityIndicator color={colors.textPrimary} />
-            ) : (
-              <Text style={styles.testButtonText}>Test connection</Text>
-            )}
-          </Pressable>
-
-          {status === 'ok' && (
-            <Text style={styles.success}>
-              Connected. Models: {availableModels.join(', ') || 'none installed'}
-            </Text>
-          )}
-          {status === 'error' && <Text style={styles.errorText}>{error}</Text>}
+          <ModelPicker baseUrl={baseUrl} value={modelInput} onChange={setModelInput} />
 
           <View style={styles.divider} />
 
           <View style={styles.switchRow}>
             <Text style={styles.label}>Use imported chat history</Text>
-            <Switch
-              value={ragEnabledInput}
-              onValueChange={setRagEnabledInput}
-              trackColor={{ false: colors.inputBg, true: colors.accent }}
-              thumbColor={colors.textPrimary}
-            />
+            <Checkbox value={ragEnabledInput} onValueChange={setRagEnabledInput} />
           </View>
-
-          <Text style={styles.label}>RAG server URL</Text>
-          <TextInput
-            style={styles.input}
-            value={ragUrlInput}
-            onChangeText={setRagUrlInput}
-            placeholder="http://192.168.1.x:11435"
-            placeholderTextColor={colors.placeholder}
-            autoCapitalize="none"
-            autoCorrect={false}
-            keyboardType="url"
-            editable={ragEnabledInput}
-          />
 
           <Pressable style={styles.testButton} onPress={testRagConnection} disabled={!ragEnabledInput}>
             {ragStatus === 'checking' ? (
@@ -211,26 +119,8 @@ export function SettingsModal({
 
           <View style={styles.switchRow}>
             <Text style={styles.label}>Read replies aloud</Text>
-            <Switch
-              value={ttsEnabledInput}
-              onValueChange={setTtsEnabledInput}
-              trackColor={{ false: colors.inputBg, true: colors.accent }}
-              thumbColor={colors.textPrimary}
-            />
+            <Checkbox value={ttsEnabledInput} onValueChange={setTtsEnabledInput} />
           </View>
-
-          <Text style={styles.label}>TTS server URL</Text>
-          <TextInput
-            style={styles.input}
-            value={ttsUrlInput}
-            onChangeText={setTtsUrlInput}
-            placeholder="http://192.168.1.x:11436"
-            placeholderTextColor={colors.placeholder}
-            autoCapitalize="none"
-            autoCorrect={false}
-            keyboardType="url"
-            editable={ttsEnabledInput}
-          />
 
           <Pressable style={styles.testButton} onPress={testTtsConnection} disabled={!ttsEnabledInput}>
             {ttsStatus === 'checking' ? (
@@ -244,6 +134,15 @@ export function SettingsModal({
 
           {ttsStatus === 'ok' && <Text style={styles.success}>Connected. Voice: {ttsVoice}</Text>}
           {ttsStatus === 'error' && <Text style={styles.errorText}>{ttsError}</Text>}
+
+          <Disclosure title="Tech Specs">
+            <SpecRow label="Platform" value={`${Platform.OS} ${Platform.Version ?? ''}`.trim()} />
+            <SpecRow label="App version" value={Constants.expoConfig?.version ?? 'unknown'} />
+            <SpecRow label="Ollama server" value={baseUrl} />
+            <SpecRow label="RAG server" value={ragUrl} />
+            <SpecRow label="TTS server" value={ttsUrl} />
+            <SpecRow label="Current model" value={model} last />
+          </Disclosure>
         </ScrollView>
 
         <View style={styles.actions}>
@@ -252,22 +151,24 @@ export function SettingsModal({
           </Pressable>
           <Pressable
             style={[styles.actionButton, styles.saveButton]}
-            onPress={() =>
-              onSave(
-                urlInput.trim(),
-                modelInput.trim(),
-                ragUrlInput.trim(),
-                ragEnabledInput,
-                ttsUrlInput.trim(),
-                ttsEnabledInput
-              )
-            }
+            onPress={() => onSave(modelInput.trim(), ragEnabledInput, ttsEnabledInput)}
           >
             <Text style={styles.actionButtonText}>Save</Text>
           </Pressable>
         </View>
       </View>
     </Modal>
+  );
+}
+
+function SpecRow({ label, value, last }: { label: string; value: string; last?: boolean }) {
+  return (
+    <View style={[styles.specRow, last && styles.specRowLast]}>
+      <Text style={styles.specLabel}>{label}</Text>
+      <Text style={styles.specValue} numberOfLines={1}>
+        {value}
+      </Text>
+    </View>
   );
 }
 
@@ -295,16 +196,6 @@ const styles = StyleSheet.create({
     marginBottom: 6,
     marginTop: 16,
     textTransform: 'uppercase',
-  },
-  input: {
-    backgroundColor: colors.inputBg,
-    borderWidth: bevel.width,
-    ...bevel.sunken,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: 16,
-    fontFamily: blockFont,
-    color: colors.textPrimary,
   },
   testButton: {
     marginTop: 20,
@@ -348,6 +239,30 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+  },
+  specRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.accent,
+    gap: spacing.sm,
+  },
+  specRowLast: {
+    borderBottomWidth: 0,
+  },
+  specLabel: {
+    fontFamily: blockFont,
+    fontSize: 12,
+    fontWeight: '700',
+    color: colors.textSecondary,
+  },
+  specValue: {
+    flex: 1,
+    textAlign: 'right',
+    fontFamily: blockFont,
+    fontSize: 12,
+    color: colors.textPrimary,
   },
   actions: {
     flexDirection: 'row',

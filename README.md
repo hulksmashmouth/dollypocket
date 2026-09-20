@@ -5,8 +5,8 @@ An iOS-first React Native (Expo) chat client for [Ollama](https://ollama.com), r
 ## Stack
 
 - Expo (managed workflow) + TypeScript
-- No navigation library — single chat screen with a Settings sheet
-- `@react-native-async-storage/async-storage` for persisting server URL / model
+- No navigation library — single chat screen with a Settings sheet and a custom left drawer (past chats)
+- `@react-native-async-storage/async-storage` for persisting model/RAG/TTS preferences and conversation history
 - Streaming responses via `XMLHttpRequest` (React Native's `fetch` doesn't expose a readable `response.body`, so streaming NDJSON from Ollama's `/api/chat` uses XHR `onprogress`, the standard RN workaround)
 
 ## 1. Make Ollama reachable from your phone
@@ -43,10 +43,13 @@ Scan the QR code with your iPhone's Camera app — it opens directly in
 [Expo Go](https://apps.apple.com/app/expo-go/id982107779), live-reloading as
 you edit. No Xcode or Simulator needed.
 
-The app tries to guess your Mac's LAN IP from the Expo dev server automatically.
-If it guesses wrong, or you're running on Expo Go on a physical device, open
-**Settings** in the app and set the URL manually, e.g. `http://192.168.1.42:11434`,
-then tap **Test connection**.
+The app guesses your Mac's LAN IP from the Expo dev server automatically
+(`guessDefaultBaseUrl()` in `src/settings.ts`) — there's no in-app field to
+override it manually anymore (Settings dropped editable server URLs in favor
+of a read-only Tech Specs panel, since this app's primary target is now a
+fixed-network Pi kiosk rather than a roaming phone). If the guess is wrong for
+your setup, edit that function directly rather than looking for a Settings
+field.
 
 ## 3. Optional: import your ChatGPT history (RAG)
 
@@ -88,11 +91,12 @@ sudo /usr/libexec/ApplicationFirewall/socketfilterfw --add "$(which node)"
 sudo /usr/libexec/ApplicationFirewall/socketfilterfw --unblockapp "$(which node)"
 ```
 
-In the app's **Settings**, the RAG server URL is guessed the same way as the
-Ollama URL (same host, port 11435). Toggle **Use imported chat history** on
-and tap **Check history index** to confirm it found your chunks. From then on,
-relevant past excerpts are silently retrieved and injected as context on every
-message — they don't show up as visible chat bubbles.
+The RAG server URL is guessed the same way as the Ollama URL (same host, port
+11435) — not editable in Settings, visible read-only in its Tech Specs panel.
+Toggle **Use imported chat history** on and tap **Check history index** to
+confirm it found your chunks. From then on, relevant past excerpts are
+silently retrieved and injected as context on every message — they don't show
+up as visible chat bubbles.
 
 ## 4. Optional: read replies aloud (local TTS via Piper)
 
@@ -118,9 +122,10 @@ no genuinely Southern-accented option available locally.
 PYTHON_BIN=$(pwd)/server/piper-venv/bin/python3 npm run tts-server
 ```
 
-It listens on port 11436. In the app's **Settings**, the TTS server URL is
-guessed the same way as Ollama's (same host, port 11436) — toggle **Read
-replies aloud** on and tap **Test connection** to confirm it can reach Piper.
+It listens on port 11436. The TTS server URL is guessed the same way as
+Ollama's (same host, port 11436) — not editable in Settings, visible read-only
+in its Tech Specs panel. Toggle **Read replies aloud** on and tap **Test
+connection** to confirm it can reach Piper.
 
 ## Project layout
 
@@ -128,7 +133,10 @@ replies aloud** on and tap **Test connection** to confirm it can reach Piper.
 App.tsx                  entry point, wraps ChatScreen in SafeAreaProvider
 src/
   types.ts               ChatMessage type
-  settings.ts             AsyncStorage-backed server URL / model / RAG / TTS persistence
+  settings.ts             AsyncStorage-backed model / RAG / TTS persistence
+                          (server URLs are auto-detected only, not stored)
+  conversations.ts        AsyncStorage-backed conversation history (list/save/
+                          delete + auto-titling from the first user message)
   api/ollama.ts           streamChat() + listModels() against Ollama's HTTP API
   api/rag.ts               searchHistory() + checkRagHealth() against the RAG server
   api/tts.ts               synthesizeSpeech() + checkTtsHealth() against the TTS server
@@ -136,8 +144,15 @@ src/
     MessageBubble.tsx      renders replies + the per-bubble speaker button
     ChatInput.tsx
     SettingsModal.tsx
+    ConversationDrawer.tsx  "The Gabbin' Cabinet" — past-chats side drawer
+    ModelPicker.tsx        fetches + lists installed Ollama models to pick from
+    Panel.tsx              flat pastel panel with a hard Win95-style bevel border
+    IconButton.tsx         small raised-bevel box wrapping a vector icon
+    Checkbox.tsx           boxy sunken-well toggle (replaces native Switch)
+    Disclosure.tsx         collapsible "hider panel" (progressive disclosure)
   screens/
-    ChatScreen.tsx         message list, streaming state, RAG retrieval, wiring
+    ChatScreen.tsx         message list, streaming state, RAG retrieval,
+                          conversation persistence, wiring
 server/
   rag-server.mjs           local HTTP server: embeds query via Ollama, cosine
                             similarity search over server/data/embeddings.json
