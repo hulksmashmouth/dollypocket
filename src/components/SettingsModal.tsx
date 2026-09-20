@@ -320,7 +320,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   testButtonText: {
-    color: '#c1279a',
+    color: colors.accentSolid,
     fontSize: 16,
     fontWeight: '600',
   },

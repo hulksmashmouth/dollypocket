@@ -11,7 +11,25 @@ Group=pi
 # cage needs a runtime dir and DRM/input access (video+input+render groups,
 # plus seatd running) since there's no full display manager here.
 Environment=XDG_RUNTIME_DIR=/run/user/1000
-ExecStart=/usr/bin/cage -- /usr/bin/chromium-browser \
+# NOTE: do not set WAYLAND_DISPLAY here — cage's own backend auto-detection
+# treats a preset WAYLAND_DISPLAY as "connect to an existing compositor as a
+# nested client" and refuses to start ("Unable to create the wlroots
+# backend"). It must stay unset for cage so it uses the DRM/KMS backend and
+# creates that socket itself; wlr-randr (below) sets it only for itself.
+# vc4-kms-v3d's atomic KMS path fails ("Swapchain for output ... failed test")
+# with custom hdmi_timings modes (raspberrypi/linux#4516) — Pi 5 has no fkms
+# fallback, so drop wlroots to the legacy (non-atomic) KMS API instead. The
+# hardware-cursor plane is also a common culprit for the same failure on vc4.
+Environment=WLR_DRM_NO_ATOMIC=1
+Environment=WLR_NO_HARDWARE_CURSORS=1
+# On a cold boot, seatd's own session/socket setup can still be settling right
+# when cage tries to grab DRM master, even though the seatd *unit* is already
+# "active" (After=/Wants= only guarantees that much) — cage then silently
+# fails to take over the display (e.g. "Failed to set DPMS property:
+# Permission denied") and the text console stays visible instead. A short
+# delay avoids the race; a real restart works every time once seatd's settled.
+ExecStartPre=/bin/sleep 3
+ExecStart=/usr/bin/cage -- /usr/bin/chromium \
   --kiosk \
   --noerrdialogs \
   --disable-infobars \
@@ -20,8 +38,13 @@ ExecStart=/usr/bin/cage -- /usr/bin/chromium-browser \
   --autoplay-policy=no-user-gesture-required \
   --check-for-update-interval=31536000 \
   http://localhost:8080
+# cage's own Wayland compositor rotation, not the kernel's fbcon-only
+# `video=...,rotate=` cmdline flag (that one only affects the text console —
+# wlroots clients like cage/Chromium need this instead). Adjust the panel
+# name/transform to match your display; `wlr-randr` (no args) lists both.
+ExecStartPost=/bin/sh -c 'sleep 6 && WAYLAND_DISPLAY=wayland-0 /usr/bin/wlr-randr --output HDMI-A-2 --transform 90'
 Restart=on-failure
 RestartSec=3
 
 [Install]
-WantedBy=graphical.target
+WantedBy=multi-user.target

@@ -1,3 +1,4 @@
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   FlatList,
@@ -138,9 +139,16 @@ export function ChatScreen() {
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
       <GlassView intensity={30} style={styles.header}>
-        <GradientText style={styles.headerTitle}>Dolly Pocket</GradientText>
-        <Pressable onPress={() => setSettingsVisible(true)} hitSlop={12}>
-          <Text style={styles.settingsLink}>Settings</Text>
+        <View style={styles.titleRow}>
+          <GradientText style={styles.headerTitle}>Dolly Pocket</GradientText>
+          <MaterialCommunityIcons name="butterfly" size={22} color={colors.accentSolid} />
+        </View>
+        <Pressable
+          onPress={() => setSettingsVisible(true)}
+          hitSlop={12}
+          accessibilityLabel="Settings"
+        >
+          <Ionicons name="settings-outline" size={24} color={colors.accentSolid} />
         </Pressable>
       </GlassView>
 
@@ -201,14 +209,14 @@ const styles = StyleSheet.create({
     borderLeftWidth: 0,
     borderRightWidth: 0,
   },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
   headerTitle: {
     fontSize: 22,
     fontWeight: '800',
-  },
-  settingsLink: {
-    color: '#c1279a',
-    fontSize: 16,
-    fontWeight: '600',
   },
   listContent: {
     paddingVertical: spacing.md,

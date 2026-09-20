@@ -27,7 +27,7 @@ export function ChatInput({ disabled, onSend }: Props) {
         style={styles.input}
         value={text}
         onChangeText={setText}
-        placeholder="Message"
+        placeholder="Ask me anything, sugar..."
         placeholderTextColor={colors.placeholder}
         multiline
         editable={!disabled}
@@ -56,6 +56,8 @@ export function ChatInput({ disabled, onSend }: Props) {
   );
 }
 
+const INPUT_HEIGHT = 44;
+
 const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
@@ -67,6 +69,7 @@ const styles = StyleSheet.create({
   },
   input: {
     flex: 1,
+    minHeight: INPUT_HEIGHT,
     maxHeight: 120,
     backgroundColor: colors.inputBg,
     borderRadius: radii.pill,
@@ -77,9 +80,9 @@ const styles = StyleSheet.create({
     marginRight: spacing.sm,
   },
   sendButton: {
+    height: INPUT_HEIGHT,
     borderRadius: radii.pill,
     paddingHorizontal: 16,
-    paddingVertical: 10,
     justifyContent: 'center',
     alignItems: 'center',
     minWidth: 64,

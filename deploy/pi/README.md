@@ -27,7 +27,7 @@ differ.
 ## 2. Base packages
 
 ```sh
-sudo apt update && sudo apt install -y nodejs npm cage seatd chromium-browser git python3-venv
+sudo apt update && sudo apt install -y nodejs npm cage seatd chromium git python3-venv wlr-randr
 # Debian's seatd has no "seat" group (unlike Arch) — its seatd.service runs as
 # `seatd -g video`, so `video` is what grants seat access here. See Troubleshooting.
 sudo usermod -aG video,input,render pi
@@ -130,6 +130,51 @@ curl localhost:11436/health      # should report the configured Piper voice
 
 ## Troubleshooting
 
+- **Need to rotate the display (e.g. a portrait panel mounted landscape)**:
+  the kernel's `video=...,rotate=` cmdline parameter only rotates the text
+  console (fbcon) — `cage`, a Wayland compositor, doesn't read it at all, so
+  it has no effect on the kiosk itself. Rotate at the compositor level
+  instead with `wlr-randr` (already in step 2's package list):
+  ```sh
+  XDG_RUNTIME_DIR=/run/user/1000 WAYLAND_DISPLAY=wayland-0 wlr-randr
+  ```
+  lists your actual output name and current transform — confirm it matches
+  before changing anything. `dollypocket-kiosk.service` already applies
+  `--transform 90` to `HDMI-A-2` via `ExecStartPost` on every start; adjust
+  the output name/transform value (`90`/`180`/`270`/`flipped`/etc.) to match
+  your panel and mounting.
+
+- **Boots to a full desktop instead of the kiosk, or `dollypocket-kiosk`
+  intermittently fails with DRM errors** (e.g. `Failed to set DPMS property:
+  Permission denied`): you likely flashed Raspberry Pi OS **Desktop** instead
+  of **Lite** in Raspberry Pi Imager — an easy toggle to miss. `lightdm`
+  auto-launches a desktop compositor (`labwc`) on boot, which grabs DRM
+  master for the display; `cage` (via `dollypocket-kiosk`) then intermittently
+  fights it for control, winning or losing depending on timing. Everything
+  in this doc assumes `cage` is the *only* thing touching the display, so
+  disable the desktop rather than trying to make them coexist:
+  ```sh
+  sudo systemctl disable --now lightdm
+  sudo systemctl set-default multi-user.target
+  sudo reboot
+  ```
+
+- **`dollypocket-kiosk` fails with "Failed to spawn client: No such file or
+  directory"**: on Trixie-based Raspberry Pi OS, `chromium-browser` is a
+  transitional dummy package with no actual binary — the real one installs
+  as plain `chromium` at `/usr/bin/chromium`. Step 2 above and
+  `dollypocket-kiosk.service` already use `chromium`; if you're seeing this,
+  check `which chromium` and update `ExecStart` in the service file to match
+  wherever it actually landed.
+
+- **`dollypocket-kiosk` doesn't come back after a reboot** even though
+  `systemctl enable --now` worked in the current session: its `[Install]`
+  section needs `WantedBy=multi-user.target`, not `graphical.target` —
+  Raspberry Pi OS **Lite** boots to `multi-user.target` and never reaches
+  `graphical.target`, so a unit only wanted by the latter never auto-starts.
+  `--now` masks this the first time by starting it immediately regardless of
+  target; the gap only shows up on the next real reboot.
+
 - **No `seat` group on Debian**: Arch-based seatd setups add the user to a
   `seat` group, but Raspberry Pi OS's `seatd` package doesn't create one —
   its `seatd.service` runs as `seatd -g video`, so group membership is
@@ -158,10 +203,27 @@ curl localhost:11436/health      # should report the configured Piper voice
   kiosk setup, Chromium and Ollama both run on `localhost` on the same Pi,
   so neither variable is required there.
 
-- **Waveshare 3.2" HDMI LCD (H) (480x800)**: this panel needs a custom
-  `hdmi_timings` line in `/boot/firmware/config.txt`:
+- **Waveshare 3.2" HDMI LCD (H) (480x800)**: this panel needs a custom mode
+  in `/boot/firmware/config.txt` (append after the `[all]` section):
   ```
+  hdmi_force_hotplug=1
+  hdmi_group=2
+  hdmi_mode=87
   hdmi_timings=480 0 50 20 50 800 0 19 20 20 0 0 0 60 0 38000000 6
   ```
   Also note the Pi 5 has no full-size HDMI port — you'll need a
   micro-HDMI-to-HDMI adapter to connect this panel.
+
+  **This custom mode plus `vc4-kms-v3d` (the only display driver Pi 5
+  supports) hits a real driver bug**: cage/Chromium start fine, but nothing
+  renders — `journalctl -u dollypocket-kiosk` fills with `Swapchain for
+  output 'HDMI-A-2' failed test`. This is
+  [raspberrypi/linux#4516](https://github.com/raspberrypi/linux/issues/4516);
+  their fix (switch to the legacy `vc4-fkms-v3d` driver) isn't an option on
+  Pi 5, which has no fkms fallback. Instead, work around it at the
+  compositor level by dropping wlroots to non-atomic KMS —
+  `dollypocket-kiosk.service` already sets:
+  ```ini
+  Environment=WLR_DRM_NO_ATOMIC=1
+  Environment=WLR_NO_HARDWARE_CURSORS=1
+  ```
