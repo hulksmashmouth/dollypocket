@@ -1,7 +1,7 @@
 import Constants from 'expo-constants';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { checkRagHealth } from '../api/rag';
+import { checkKnowledgeHealth } from '../api/knowledge';
 import { checkTtsHealth, TtsError } from '../api/tts';
 import { bevel, blockFont, colors, spacing } from '../theme';
 import { Checkbox } from './Checkbox';
@@ -12,11 +12,11 @@ interface Props {
   visible: boolean;
   baseUrl: string;
   model: string;
-  ragUrl: string;
-  ragEnabled: boolean;
+  knowledgeUrl: string;
+  knowledgeEnabled: boolean;
   ttsUrl: string;
   ttsEnabled: boolean;
-  onSave: (model: string, ragEnabled: boolean, ttsEnabled: boolean) => void;
+  onSave: (model: string, knowledgeEnabled: boolean, ttsEnabled: boolean) => void;
   onClose: () => void;
 }
 
@@ -26,19 +26,19 @@ export function SettingsModal({
   visible,
   baseUrl,
   model,
-  ragUrl,
-  ragEnabled,
+  knowledgeUrl,
+  knowledgeEnabled,
   ttsUrl,
   ttsEnabled,
   onSave,
   onClose,
 }: Props) {
   const [modelInput, setModelInput] = useState(model);
-  const [ragEnabledInput, setRagEnabledInput] = useState(ragEnabled);
+  const [knowledgeEnabledInput, setKnowledgeEnabledInput] = useState(knowledgeEnabled);
   const [ttsEnabledInput, setTtsEnabledInput] = useState(ttsEnabled);
-  const [ragStatus, setRagStatus] = useState<CheckStatus>('idle');
-  const [ragChunkCount, setRagChunkCount] = useState<number | null>(null);
-  const [ragError, setRagError] = useState<string | null>(null);
+  const [knowledgeStatus, setKnowledgeStatus] = useState<CheckStatus>('idle');
+  const [knowledgeInfo, setKnowledgeInfo] = useState<{ chunks: number; topics: string[] } | null>(null);
+  const [knowledgeError, setKnowledgeError] = useState<string | null>(null);
   const [ttsStatus, setTtsStatus] = useState<CheckStatus>('idle');
   const [ttsVoice, setTtsVoice] = useState<string | null>(null);
   const [ttsError, setTtsError] = useState<string | null>(null);
@@ -46,25 +46,25 @@ export function SettingsModal({
   useEffect(() => {
     if (visible) {
       setModelInput(model);
-      setRagEnabledInput(ragEnabled);
+      setKnowledgeEnabledInput(knowledgeEnabled);
       setTtsEnabledInput(ttsEnabled);
-      setRagStatus('idle');
-      setRagError(null);
+      setKnowledgeStatus('idle');
+      setKnowledgeError(null);
       setTtsStatus('idle');
       setTtsError(null);
     }
-  }, [visible, model, ragEnabled, ttsEnabled]);
+  }, [visible, model, knowledgeEnabled, ttsEnabled]);
 
-  const testRagConnection = async () => {
-    setRagStatus('checking');
-    setRagError(null);
+  const testKnowledgeConnection = async () => {
+    setKnowledgeStatus('checking');
+    setKnowledgeError(null);
     try {
-      const { chunks } = await checkRagHealth(ragUrl);
-      setRagChunkCount(chunks);
-      setRagStatus('ok');
+      const info = await checkKnowledgeHealth(knowledgeUrl);
+      setKnowledgeInfo(info);
+      setKnowledgeStatus('ok');
     } catch (err) {
-      setRagStatus('error');
-      setRagError(err instanceof Error ? err.message : 'Could not connect.');
+      setKnowledgeStatus('error');
+      setKnowledgeError(err instanceof Error ? err.message : 'Could not connect.');
     }
   };
 
@@ -92,28 +92,34 @@ export function SettingsModal({
           <View style={styles.divider} />
 
           <View style={styles.switchRow}>
-            <Text style={styles.label}>Use imported chat history</Text>
-            <Checkbox value={ragEnabledInput} onValueChange={setRagEnabledInput} />
+            <Text style={styles.label}>Use knowledge base</Text>
+            <Checkbox value={knowledgeEnabledInput} onValueChange={setKnowledgeEnabledInput} />
           </View>
 
-          <Pressable style={styles.testButton} onPress={testRagConnection} disabled={!ragEnabledInput}>
-            {ragStatus === 'checking' ? (
+          <Pressable
+            style={styles.testButton}
+            onPress={testKnowledgeConnection}
+            disabled={!knowledgeEnabledInput}
+          >
+            {knowledgeStatus === 'checking' ? (
               <ActivityIndicator color={colors.textPrimary} />
             ) : (
-              <Text style={[styles.testButtonText, !ragEnabledInput && styles.testButtonTextDisabled]}>
-                Check history index
+              <Text
+                style={[styles.testButtonText, !knowledgeEnabledInput && styles.testButtonTextDisabled]}
+              >
+                Check knowledge base
               </Text>
             )}
           </Pressable>
 
-          {ragStatus === 'ok' && (
+          {knowledgeStatus === 'ok' && (
             <Text style={styles.success}>
-              {ragChunkCount === 0
-                ? 'Connected, but no history imported yet.'
-                : `Connected. ${ragChunkCount} chunks indexed.`}
+              {knowledgeInfo?.chunks === 0
+                ? 'Connected, but nothing imported yet.'
+                : `Connected. ${knowledgeInfo?.chunks} chunks (${knowledgeInfo?.topics.join(', ')}).`}
             </Text>
           )}
-          {ragStatus === 'error' && <Text style={styles.errorText}>{ragError}</Text>}
+          {knowledgeStatus === 'error' && <Text style={styles.errorText}>{knowledgeError}</Text>}
 
           <View style={styles.divider} />
 
@@ -139,7 +145,7 @@ export function SettingsModal({
             <SpecRow label="Platform" value={`${Platform.OS} ${Platform.Version ?? ''}`.trim()} />
             <SpecRow label="App version" value={Constants.expoConfig?.version ?? 'unknown'} />
             <SpecRow label="Ollama server" value={baseUrl} />
-            <SpecRow label="RAG server" value={ragUrl} />
+            <SpecRow label="Knowledge server" value={knowledgeUrl} />
             <SpecRow label="TTS server" value={ttsUrl} />
             <SpecRow label="Current model" value={model} last />
           </Disclosure>
@@ -151,7 +157,7 @@ export function SettingsModal({
           </Pressable>
           <Pressable
             style={[styles.actionButton, styles.saveButton]}
-            onPress={() => onSave(modelInput.trim(), ragEnabledInput, ttsEnabledInput)}
+            onPress={() => onSave(modelInput.trim(), knowledgeEnabledInput, ttsEnabledInput)}
           >
             <Text style={styles.actionButtonText}>Save</Text>
           </Pressable>

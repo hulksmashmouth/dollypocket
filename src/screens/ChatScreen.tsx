@@ -1,9 +1,10 @@
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { FlatList, KeyboardAvoidingView, Platform, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { searchKnowledge } from '../api/knowledge';
 import { streamChat, OllamaError } from '../api/ollama';
-import { searchHistory } from '../api/rag';
 import { ChatInput } from '../components/ChatInput';
 import { ConversationDrawer } from '../components/ConversationDrawer';
 import { IconButton } from '../components/IconButton';
@@ -21,7 +22,7 @@ import {
 } from '../conversations';
 import { SYSTEM_PROMPT } from '../persona';
 import * as settings from '../settings';
-import { blockFont, colors, spacing } from '../theme';
+import { blockFont, colors, headerGradient, spacing } from '../theme';
 import { ChatMessage } from '../types';
 
 let nextId = 0;
@@ -36,8 +37,8 @@ export function ChatScreen() {
   const [activeConversationId, setActiveConversationIdState] = useState<string | null>(null);
   const [baseUrl, setBaseUrl] = useState('');
   const [model, setModel] = useState('');
-  const [ragUrl, setRagUrl] = useState('');
-  const [ragEnabled, setRagEnabled] = useState(true);
+  const [knowledgeUrl, setKnowledgeUrl] = useState('');
+  const [knowledgeEnabled, setKnowledgeEnabled] = useState(true);
   const [ttsUrl, setTtsUrl] = useState('');
   const [ttsEnabled, setTtsEnabled] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -49,8 +50,8 @@ export function ChatScreen() {
   const loadSettings = useCallback(async () => {
     setBaseUrl(settings.guessDefaultBaseUrl());
     setModel(await settings.getModel());
-    setRagUrl(settings.guessDefaultRagUrl());
-    setRagEnabled(await settings.getRagEnabled());
+    setKnowledgeUrl(settings.guessDefaultKnowledgeUrl());
+    setKnowledgeEnabled(await settings.getKnowledgeEnabled());
     setTtsUrl(settings.guessDefaultTtsUrl());
     setTtsEnabled(await settings.getTtsEnabled());
   }, []);
@@ -152,27 +153,27 @@ export function ChatScreen() {
       { id: 'persona', role: 'system', content: SYSTEM_PROMPT },
       ...nextMessages,
     ];
-    if (ragEnabled) {
+    if (knowledgeEnabled) {
       try {
-        const results = await searchHistory(ragUrl, text, 4);
+        const results = await searchKnowledge(knowledgeUrl, text, 4);
         if (results.length > 0) {
           const context = results
-            .map((r) => `[${r.title}, ${r.createTime}]\n${r.text}`)
+            .map((r) => `[${r.topic} — ${r.title}]\n${r.text}`)
             .join('\n\n---\n\n');
           apiMessages = [
             { id: 'persona', role: 'system', content: SYSTEM_PROMPT },
             {
-              id: 'rag-context',
+              id: 'knowledge-context',
               role: 'system',
               content:
-                "Relevant excerpts from the user's past ChatGPT conversations. " +
-                `Use them only if helpful; ignore if irrelevant.\n\n${context}`,
+                'Relevant background from an imported knowledge base. ' +
+                `Use it only if helpful; ignore if irrelevant.\n\n${context}`,
             },
             ...nextMessages,
           ];
         }
       } catch {
-        // RAG server unreachable or unconfigured — chat without retrieved context.
+        // Knowledge server unreachable or unconfigured — chat without retrieved context.
       }
     }
 
@@ -200,21 +201,27 @@ export function ChatScreen() {
 
   const handleSaveSettings = async (
     newModel: string,
-    newRagEnabled: boolean,
+    newKnowledgeEnabled: boolean,
     newTtsEnabled: boolean
   ) => {
     await settings.setModel(newModel);
-    await settings.setRagEnabled(newRagEnabled);
+    await settings.setKnowledgeEnabled(newKnowledgeEnabled);
     await settings.setTtsEnabled(newTtsEnabled);
     setModel(newModel);
-    setRagEnabled(newRagEnabled);
+    setKnowledgeEnabled(newKnowledgeEnabled);
     setTtsEnabled(newTtsEnabled);
     setSettingsVisible(false);
   };
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
-      <Panel variant="raised" style={styles.header}>
+      <Panel variant="raised" style={[styles.header, styles.headerBevelOnly]}>
+        <LinearGradient
+          colors={headerGradient}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={StyleSheet.absoluteFill}
+        />
         <IconButton
           size={36}
           onPress={() => setDrawerVisible(true)}
@@ -224,8 +231,10 @@ export function ChatScreen() {
         </IconButton>
 
         <View style={styles.titleRow}>
+          <Ionicons name="sparkles" size={16} color={colors.textPrimary} />
           <Text style={styles.headerTitle}>Dolly Pocket</Text>
           <MaterialCommunityIcons name="butterfly" size={22} color={colors.textPrimary} />
+          <Ionicons name="heart" size={14} color={colors.textPrimary} />
         </View>
 
         <IconButton size={36} onPress={() => setSettingsVisible(true)} accessibilityLabel="Settings">
@@ -266,8 +275,8 @@ export function ChatScreen() {
         visible={settingsVisible}
         baseUrl={baseUrl}
         model={model}
-        ragUrl={ragUrl}
-        ragEnabled={ragEnabled}
+        knowledgeUrl={knowledgeUrl}
+        knowledgeEnabled={knowledgeEnabled}
         ttsUrl={ttsUrl}
         ttsEnabled={ttsEnabled}
         onSave={handleSaveSettings}
@@ -291,7 +300,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
-    backgroundColor: colors.headerPink,
+  },
+  // Bevel border stays exactly as every other Win95 panel — only the fill
+  // becomes a gradient (via the LinearGradient rendered as the first child).
+  headerBevelOnly: {
+    backgroundColor: 'transparent',
+    overflow: 'hidden',
   },
   titleRow: {
     flex: 1,

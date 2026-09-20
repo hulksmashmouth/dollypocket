@@ -2,8 +2,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 
 const MODEL_KEY = 'dollypocket.model';
-const RAG_ENABLED_KEY = 'dollypocket.ragEnabled';
 const TTS_ENABLED_KEY = 'dollypocket.ttsEnabled';
+const KNOWLEDGE_ENABLED_KEY = 'dollypocket.knowledgeEnabled';
 
 export const DEFAULT_MODEL = 'qwen2.5:3b';
 
@@ -22,14 +22,14 @@ export function guessDefaultBaseUrl(): string {
   return host ? `http://${host}:11434` : 'http://localhost:11434';
 }
 
-export function guessDefaultRagUrl(): string {
-  const host = guessHost();
-  return host ? `http://${host}:11435` : 'http://localhost:11435';
-}
-
 export function guessDefaultTtsUrl(): string {
   const host = guessHost();
   return host ? `http://${host}:11436` : 'http://localhost:11436';
+}
+
+export function guessDefaultKnowledgeUrl(): string {
+  const host = guessHost();
+  return host ? `http://${host}:11435` : 'http://localhost:11435';
 }
 
 export async function getModel(): Promise<string> {
@@ -41,17 +41,8 @@ export async function setModel(model: string): Promise<void> {
   await AsyncStorage.setItem(MODEL_KEY, model.trim());
 }
 
-export async function getRagEnabled(): Promise<boolean> {
-  const stored = await AsyncStorage.getItem(RAG_ENABLED_KEY);
-  return stored === null ? true : stored === 'true';
-}
-
-export async function setRagEnabled(enabled: boolean): Promise<void> {
-  await AsyncStorage.setItem(RAG_ENABLED_KEY, String(enabled));
-}
-
-// Off by default: unlike RAG (which fails silently in the background), TTS is
-// a fully separate server most people won't have set up (see deploy/pi/README.md).
+// Off by default: TTS is a fully separate server most people won't have set
+// up (see deploy/pi/README.md).
 export async function getTtsEnabled(): Promise<boolean> {
   const stored = await AsyncStorage.getItem(TTS_ENABLED_KEY);
   return stored === 'true';
@@ -59,4 +50,16 @@ export async function getTtsEnabled(): Promise<boolean> {
 
 export async function setTtsEnabled(enabled: boolean): Promise<void> {
   await AsyncStorage.setItem(TTS_ENABLED_KEY, String(enabled));
+}
+
+// On by default: fails silently in the background if the knowledge server
+// isn't running or the base hasn't been imported yet (see
+// scripts/import-knowledge.mjs), same as the old chat-history RAG did.
+export async function getKnowledgeEnabled(): Promise<boolean> {
+  const stored = await AsyncStorage.getItem(KNOWLEDGE_ENABLED_KEY);
+  return stored === null ? true : stored === 'true';
+}
+
+export async function setKnowledgeEnabled(enabled: boolean): Promise<void> {
+  await AsyncStorage.setItem(KNOWLEDGE_ENABLED_KEY, String(enabled));
 }

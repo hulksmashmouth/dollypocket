@@ -6,7 +6,7 @@ An iOS-first React Native (Expo) chat client for [Ollama](https://ollama.com), r
 
 - Expo (managed workflow) + TypeScript
 - No navigation library — single chat screen with a Settings sheet and a custom left drawer (past chats)
-- `@react-native-async-storage/async-storage` for persisting model/RAG/TTS preferences and conversation history
+- `@react-native-async-storage/async-storage` for persisting model/TTS preferences and conversation history
 - Streaming responses via `XMLHttpRequest` (React Native's `fetch` doesn't expose a readable `response.body`, so streaming NDJSON from Ollama's `/api/chat` uses XHR `onprogress`, the standard RN workaround)
 
 ## 1. Make Ollama reachable from your phone
@@ -51,15 +51,13 @@ fixed-network Pi kiosk rather than a roaming phone). If the guess is wrong for
 your setup, edit that function directly rather than looking for a Settings
 field.
 
-## 3. Optional: import your ChatGPT history (RAG)
+## 3. Optional: give it a knowledge base (Wikipedia retrieval)
 
-Dolly Pocket can retrieve relevant snippets from your old ChatGPT conversations and
-feed them to Ollama as context before answering, so the model can reference
-things you've talked about before. This runs entirely on your Mac — the phone
-only ever talks to Ollama and a small local search server.
-
-**Export your ChatGPT data:** ChatGPT Settings → Data controls → Export data.
-You'll get an email with a zip; unzip it and find `conversations.json`.
+Dolly Pocket can retrieve real background on a topic — starting with Dolly
+Parton's actual history — and feed it to Ollama as context before answering,
+instead of relying on whatever a small local model happens to remember from
+pretraining. This runs entirely on your Mac; the phone only ever talks to
+Ollama and a small local search server.
 
 **Pull an embedding model:**
 
@@ -67,20 +65,25 @@ You'll get an email with a zip; unzip it and find `conversations.json`.
 ollama pull nomic-embed-text
 ```
 
-**Build the index** (re-run this after every new export; it embeds every
-message via Ollama, so it takes a while for a large history):
+**Import a topic** (fetches each Wikipedia page's plain-text extract, chunks
+it, and embeds every chunk via Ollama):
 
 ```sh
-npm run import-chatgpt-history -- ~/Downloads/chatgpt-export/conversations.json
+node scripts/import-knowledge.mjs "Dolly Parton" \
+  "Dolly Parton" "Dollywood" "Dolly Parton's Imagination Library" \
+  "Dolly Parton discography"
 ```
 
-This writes `server/data/embeddings.json` — your personal chat history in
-embedded form. It's git-ignored and never leaves your Mac.
+First argument is a topic label (your own bookkeeping); the rest are
+Wikipedia page titles. Re-run any time — with a new topic to add it, or the
+same topic to refresh it (existing chunks for that topic are replaced,
+others left alone). This writes `server/data/knowledge.json`; it's
+git-ignored and never leaves your Mac.
 
-**Run the search server**, alongside `ollama serve`:
+**Run the knowledge server**, alongside `ollama serve`:
 
 ```sh
-npm run rag-server
+npm run knowledge-server
 ```
 
 It listens on port 11435 and needs the same firewall exception Ollama did:
@@ -91,12 +94,12 @@ sudo /usr/libexec/ApplicationFirewall/socketfilterfw --add "$(which node)"
 sudo /usr/libexec/ApplicationFirewall/socketfilterfw --unblockapp "$(which node)"
 ```
 
-The RAG server URL is guessed the same way as the Ollama URL (same host, port
+The knowledge server URL is guessed the same way as Ollama's (same host, port
 11435) — not editable in Settings, visible read-only in its Tech Specs panel.
-Toggle **Use imported chat history** on and tap **Check history index** to
-confirm it found your chunks. From then on, relevant past excerpts are
-silently retrieved and injected as context on every message — they don't show
-up as visible chat bubbles.
+Toggle **Use knowledge base** on (on by default) and tap **Check knowledge
+base** to confirm it found your imported chunks. From then on, relevant
+excerpts are silently retrieved and injected as context on every message —
+they don't show up as visible chat bubbles.
 
 ## 4. Optional: read replies aloud (local TTS via Piper)
 
@@ -133,12 +136,12 @@ connection** to confirm it can reach Piper.
 App.tsx                  entry point, wraps ChatScreen in SafeAreaProvider
 src/
   types.ts               ChatMessage type
-  settings.ts             AsyncStorage-backed model / RAG / TTS persistence
+  settings.ts             AsyncStorage-backed model / TTS persistence
                           (server URLs are auto-detected only, not stored)
   conversations.ts        AsyncStorage-backed conversation history (list/save/
                           delete + auto-titling from the first user message)
   api/ollama.ts           streamChat() + listModels() against Ollama's HTTP API
-  api/rag.ts               searchHistory() + checkRagHealth() against the RAG server
+  api/knowledge.ts         searchKnowledge() + checkKnowledgeHealth() against the knowledge server
   api/tts.ts               synthesizeSpeech() + checkTtsHealth() against the TTS server
   components/
     MessageBubble.tsx      renders replies + the per-bubble speaker button
@@ -151,19 +154,18 @@ src/
     Checkbox.tsx           boxy sunken-well toggle (replaces native Switch)
     Disclosure.tsx         collapsible "hider panel" (progressive disclosure)
   screens/
-    ChatScreen.tsx         message list, streaming state, RAG retrieval,
-                          conversation persistence, wiring
+    ChatScreen.tsx         message list, streaming state, conversation
+                          persistence, wiring
 server/
-  rag-server.mjs           local HTTP server: embeds query via Ollama, cosine
-                            similarity search over server/data/embeddings.json
+  knowledge-server.mjs     local HTTP server: embeds query via Ollama, cosine
+                            similarity search over server/data/knowledge.json
   tts-server.mjs           local HTTP server: synthesizes speech via Piper,
                             caches WAVs in server/data/tts-cache
-  data/                    git-ignored — your embedded chat history and TTS
-                            cache live here
+  data/                    git-ignored — generated knowledge base + TTS cache live here
   voices/                  git-ignored — downloaded Piper voice models live here
 scripts/
-  import-chatgpt-export.mjs  one-time (per export) script: chunk + embed
-                              conversations.json into server/data/embeddings.json
+  import-knowledge.mjs     fetches Wikipedia article extracts, chunks + embeds
+                            them into server/data/knowledge.json
 ```
 
 ## Notes
@@ -171,5 +173,5 @@ scripts/
 - `app.json` sets `NSAllowsLocalNetworking` so iOS permits plain-HTTP requests
   to your local Ollama server (App Transport Security otherwise blocks
   non-HTTPS requests).
-- Conversation history is in-memory only (cleared on reload). Persisting it
-  is a natural next step once the core loop feels good.
+- Conversation history persists across reloads via `src/conversations.ts`
+  (AsyncStorage) — see "The Gabbin' Cabinet" drawer in the chat screen.

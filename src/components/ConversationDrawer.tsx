@@ -1,3 +1,5 @@
+import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useRef } from 'react';
 import {
   Animated,
@@ -10,7 +12,7 @@ import {
   View,
 } from 'react-native';
 import { Conversation } from '../conversations';
-import { bevel, blockFont, colors, spacing } from '../theme';
+import { bevel, blockFont, colors, headerGradient, spacing } from '../theme';
 
 interface Props {
   visible: boolean;
@@ -49,7 +51,15 @@ export function ConversationDrawer({
         <Pressable style={styles.backdrop} onPress={onClose} accessibilityLabel="Close menu" />
         <Animated.View style={[styles.drawer, { transform: [{ translateX }] }]}>
           <View style={styles.header}>
+            <LinearGradient
+              colors={headerGradient}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={StyleSheet.absoluteFill}
+            />
+            <Ionicons name="heart" size={13} color={colors.textPrimary} />
             <Text style={styles.headerTitle}>The Gabbin' Cabinet</Text>
+            <Ionicons name="sparkles" size={14} color={colors.textPrimary} />
           </View>
 
           <Pressable style={styles.newChatButton} onPress={onNewChat}>
@@ -121,7 +131,11 @@ const styles = StyleSheet.create({
     borderRightColor: colors.bevelDark,
   },
   header: {
-    backgroundColor: colors.headerPink,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    backgroundColor: 'transparent',
+    overflow: 'hidden',
     borderBottomWidth: bevel.width,
     ...bevel.raised,
     borderTopWidth: 0,

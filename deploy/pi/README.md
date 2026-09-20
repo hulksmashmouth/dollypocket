@@ -1,7 +1,7 @@
 # Running Dolly Pocket standalone on a Raspberry Pi 5
 
-Everything — Ollama, the RAG server, and the chat UI itself — running on one
-Pi, booting straight into a fullscreen kiosk. No phone, no Mac required.
+Everything — Ollama and the chat UI itself — running on one Pi, booting
+straight into a fullscreen kiosk. No phone, no Mac required.
 
 Assumes: Pi 5 8GB, NVMe SSD via a bottom-mount HAT (e.g. Pimoroni NVMe Base),
 Raspberry Pi OS Lite 64-bit, default `pi` user, repo cloned to
@@ -41,9 +41,6 @@ curl -fsSL https://ollama.com/install.sh | sh
 ollama pull llama3.2:3b
 # fallback if you're still on 2GB:
 ollama pull qwen2.5:0.5b
-
-# only needed if you're keeping RAG (chat history retrieval) enabled:
-ollama pull nomic-embed-text
 ```
 
 Update `DEFAULT_MODEL` in [`src/settings.ts`](../../src/settings.ts) to match
@@ -64,7 +61,28 @@ This produces `dist/`, a static build the Pi serves to itself — no Metro dev
 server involved. Re-run the export any time you change the app and want to
 update the kiosk.
 
-## 5. Optional: local text-to-speech (Piper)
+## 5. Optional: knowledge base (Wikipedia retrieval)
+
+Lets the app retrieve real background on a topic (e.g. Dolly Parton's actual
+history) as context before answering, instead of relying on whatever a small
+local model happens to remember from pretraining. Skip this section (and
+`dollypocket-knowledge` below) if you don't want it — it's on by default in
+Settings but fails silently with no server running.
+
+```sh
+ollama pull nomic-embed-text
+cd /home/pi/dollypocket
+node scripts/import-knowledge.mjs "Dolly Parton" \
+  "Dolly Parton" "Dollywood" "Dolly Parton's Imagination Library" \
+  "Dolly Parton discography"
+```
+
+This fetches each Wikipedia article's plain-text extract, chunks it, embeds
+every chunk via Ollama, and writes `server/data/knowledge.json`. Re-run any
+time to add more topics (existing chunks for a topic are replaced, others
+left alone) — see the script's header comment for the exact usage.
+
+## 6. Optional: local text-to-speech (Piper)
 
 Lets the app read replies aloud, fully offline — no cloud TTS. Skip this
 section (and `dollypocket-tts` in the next step) if you don't want the
@@ -82,37 +100,38 @@ there's no genuinely Southern-accented option, so this is as close as local
 TTS gets. Turn it on and point it at `http://localhost:11436` from the app's
 Settings sheet once `dollypocket-tts` (below) is running.
 
-## 6. Install the services
+## 7. Install the services
 
 ```sh
 sudo cp deploy/pi/*.service /etc/systemd/system/
 sudo systemctl daemon-reload
-sudo systemctl enable --now seatd dollypocket-web dollypocket-rag dollypocket-tts dollypocket-kiosk
+sudo systemctl enable --now seatd dollypocket-web dollypocket-knowledge dollypocket-tts dollypocket-kiosk
 ```
 
 - **dollypocket-web** — serves `dist/` on `:8080` (see
   [`server/static-server.mjs`](../../server/static-server.mjs))
-- **dollypocket-rag** — chat-history retrieval on `:11435`, only useful if
-  you've run `npm run import-chatgpt-history` (see main
-  [README](../../README.md)); safe to `systemctl disable dollypocket-rag` if
-  you're skipping RAG on this build
-- **dollypocket-tts** — Piper text-to-speech on `:11436` (see step 5 above);
+- **dollypocket-knowledge** — Wikipedia-backed retrieval on `:11435` (see step
+  5 above); safe to `systemctl disable dollypocket-knowledge` if you skipped
+  that step
+- **dollypocket-tts** — Piper text-to-speech on `:11436` (see step 6 above);
   safe to `systemctl disable dollypocket-tts` if you skipped that step
 - **dollypocket-kiosk** — `cage` (minimal Wayland kiosk compositor) running
   Chromium fullscreen against `localhost:8080`
 
-The app's `guessDefaultBaseUrl()`/`guessDefaultRagUrl()`/`guessDefaultTtsUrl()`
-already fall back to `localhost` when there's no Expo dev-server manifest
-present (i.e. exactly this production case), so no Settings changes are
-needed on first boot beyond turning TTS on if you set it up.
+The app's `guessDefaultBaseUrl()`/`guessDefaultKnowledgeUrl()`/
+`guessDefaultTtsUrl()` already fall back to `localhost` when there's no Expo
+dev-server manifest present (i.e. exactly this production case), so no
+Settings changes are needed on first boot beyond turning TTS on if you set it
+up.
 
-## 7. Sanity checks
+## 8. Sanity checks
 
 ```sh
-systemctl status dollypocket-web dollypocket-rag dollypocket-tts dollypocket-kiosk ollama
+systemctl status dollypocket-web dollypocket-knowledge dollypocket-tts dollypocket-kiosk ollama
 journalctl -u dollypocket-kiosk -f   # if the screen stays black
 curl localhost:8080              # should return the app's index.html
 curl localhost:11434/api/tags    # should list your pulled model(s)
+curl localhost:11435/health      # should report imported chunk count/topics
 curl localhost:11436/health      # should report the configured Piper voice
 ```
 

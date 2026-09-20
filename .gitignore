@@ -40,7 +40,8 @@ yarn-error.*
 /ios
 /android
 
-# personal chat history + embeddings — never commit these
+# generated TTS cache + imported knowledge base (re-fetchable from Wikipedia
+# via scripts/import-knowledge.mjs) — never commit these
 /server/data/
 
 # Piper TTS venv + downloaded voice models — large, platform-specific, re-fetchable

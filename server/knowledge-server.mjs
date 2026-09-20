@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 // Serves nearest-neighbor search over the chunks produced by
-// scripts/import-chatgpt-export.mjs, so Dolly Pocket can retrieve relevant past
-// ChatGPT conversations as context before calling Ollama's chat model.
-// Vector math stays here (on the Mac) rather than on the phone.
+// scripts/import-knowledge.mjs, so Dolly Pocket can retrieve relevant
+// background (starting with Dolly Parton's real history) as context before
+// calling Ollama's chat model. Vector math stays here, not on-device.
 
 import { createServer } from 'node:http';
 import { readFileSync } from 'node:fs';
@@ -10,7 +10,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const DATA_PATH = path.join(__dirname, 'data', 'embeddings.json');
+const DATA_PATH = path.join(__dirname, 'data', 'knowledge.json');
 const OLLAMA_URL = process.env.OLLAMA_URL ?? 'http://localhost:11434';
 const EMBED_MODEL = process.env.EMBED_MODEL ?? 'nomic-embed-text';
 const PORT = Number(process.env.PORT ?? 11435);
@@ -18,9 +18,10 @@ const PORT = Number(process.env.PORT ?? 11435);
 let chunks = [];
 try {
   chunks = JSON.parse(readFileSync(DATA_PATH, 'utf8'));
-  console.log(`Loaded ${chunks.length} chunks from ${DATA_PATH}`);
+  const topics = [...new Set(chunks.map((c) => c.topic))];
+  console.log(`Loaded ${chunks.length} chunks (topics: ${topics.join(', ') || 'none'}) from ${DATA_PATH}`);
 } catch {
-  console.warn(`No index found at ${DATA_PATH} — run "npm run import-chatgpt-history <export.json>" first.`);
+  console.warn(`No knowledge base found at ${DATA_PATH} — run "node scripts/import-knowledge.mjs <topic> <wikipedia-title>..." first.`);
 }
 
 function cosineSimilarity(a, b) {
@@ -54,7 +55,8 @@ function send(res, status, body) {
 
 const server = createServer(async (req, res) => {
   if (req.method === 'GET' && req.url === '/health') {
-    return send(res, 200, { status: 'ok', chunks: chunks.length, model: EMBED_MODEL });
+    const topics = [...new Set(chunks.map((c) => c.topic))];
+    return send(res, 200, { status: 'ok', chunks: chunks.length, topics });
   }
 
   if (req.method === 'POST' && req.url === '/search') {
@@ -83,5 +85,5 @@ const server = createServer(async (req, res) => {
 });
 
 server.listen(PORT, '0.0.0.0', () => {
-  console.log(`RAG server listening on http://0.0.0.0:${PORT}`);
+  console.log(`Knowledge server listening on http://0.0.0.0:${PORT}`);
 });

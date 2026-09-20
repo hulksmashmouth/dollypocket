@@ -1,5 +1,5 @@
 [Unit]
-Description=Dolly Pocket RAG search server (retrieval over imported chat history)
+Description=Dolly Pocket knowledge base search server (retrieval over imported Wikipedia articles)
 After=network.target ollama.service
 Wants=ollama.service
 
@@ -10,7 +10,7 @@ WorkingDirectory=/home/pi/dollypocket
 Environment=OLLAMA_URL=http://localhost:11434
 Environment=EMBED_MODEL=nomic-embed-text
 Environment=PORT=11435
-ExecStart=/usr/bin/node server/rag-server.mjs
+ExecStart=/usr/bin/node server/knowledge-server.mjs
 Restart=on-failure
 RestartSec=3
 
