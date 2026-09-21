@@ -69,6 +69,7 @@ export function ConversationDrawer({
           <FlatList
             data={conversations}
             keyExtractor={(c) => c.id}
+            indicatorStyle="black"
             contentContainerStyle={styles.listContent}
             ListEmptyComponent={<Text style={styles.emptyText}>No past chats yet.</Text>}
             renderItem={({ item }) => (

@@ -72,15 +72,21 @@ Settings but fails silently with no server running.
 ```sh
 ollama pull nomic-embed-text
 cd /home/pi/dollypocket
-node scripts/import-knowledge.mjs "Dolly Parton" \
-  "Dolly Parton" "Dollywood" "Dolly Parton's Imagination Library" \
-  "Dolly Parton discography"
+# pulls in ~265 pages — every song, album, award, filmography entry, and
+# Dollywood page Wikipedia has on her (recurses one level into subcategories)
+node scripts/import-knowledge.mjs "Dolly Parton" --category "Dolly Parton"
 ```
 
 This fetches each Wikipedia article's plain-text extract, chunks it, embeds
 every chunk via Ollama, and writes `server/data/knowledge.json`. Re-run any
 time to add more topics (existing chunks for a topic are replaced, others
-left alone) — see the script's header comment for the exact usage.
+left alone) — see the script's header comment for the exact usage, including
+explicit-title and local-file (`--file`) import modes.
+
+Expect this to take a while — hundreds of Wikipedia + Ollama-embed calls —
+and note it deliberately can't pull song lyrics (copyrighted; Wikipedia
+excludes them too). It backs off automatically if Wikipedia rate-limits it
+rather than failing outright.
 
 ## 6. Optional: local text-to-speech (Piper)
 

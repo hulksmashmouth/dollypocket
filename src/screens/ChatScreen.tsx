@@ -251,6 +251,7 @@ export function ChatScreen() {
           ref={listRef}
           data={messages}
           keyExtractor={(m) => m.id}
+          indicatorStyle="black"
           renderItem={({ item }) => (
             <MessageBubble message={item} ttsUrl={ttsUrl} ttsEnabled={ttsEnabled} />
           )}

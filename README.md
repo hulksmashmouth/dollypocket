@@ -66,19 +66,38 @@ ollama pull nomic-embed-text
 ```
 
 **Import a topic** (fetches each Wikipedia page's plain-text extract, chunks
-it, and embeds every chunk via Ollama):
+it, and embeds every chunk via Ollama). Three ways to feed it pages, mixable
+in one run — explicit titles, a whole Wikipedia category (recurses one level
+into subcategories, so `Category:Dolly Parton` pulls in its songs/albums/
+Dollywood subcategories too — this is the one that gets you real breadth),
+or a local text file you have legal rights to use:
 
 ```sh
+# broad, recommended: pulls in ~265 pages — every song, album, award,
+# filmography entry, and Dollywood page Wikipedia has on her
+node scripts/import-knowledge.mjs "Dolly Parton" --category "Dolly Parton"
+
+# narrower / explicit, if you'd rather hand-pick:
 node scripts/import-knowledge.mjs "Dolly Parton" \
-  "Dolly Parton" "Dollywood" "Dolly Parton's Imagination Library" \
-  "Dolly Parton discography"
+  "Dolly Parton" "Dollywood" "Dolly Parton's Imagination Library"
 ```
 
-First argument is a topic label (your own bookkeeping); the rest are
-Wikipedia page titles. Re-run any time — with a new topic to add it, or the
-same topic to refresh it (existing chunks for that topic are replaced,
-others left alone). This writes `server/data/knowledge.json`; it's
-git-ignored and never leaves your Mac.
+First argument is always a topic label (your own bookkeeping). Re-run any
+time — with a new topic to add it, or the same topic to refresh it (existing
+chunks for that topic are replaced, others left alone). This writes
+`server/data/knowledge.json`; it's git-ignored and never leaves your Mac.
+
+Note on scope: this pulls real facts (biography, discography, chart history,
+awards, filmography) — it deliberately can't pull song **lyrics**, since
+those are copyrighted works Wikipedia itself excludes for the same reason;
+bulk-scraping a lyrics site would violate both its terms of service and
+copyright law. If you want lyrics in here, the only legitimate path is
+typing/OCRing excerpts yourself from something you actually own and feeding
+that in via `--file`.
+
+A ~265-page category import makes a lot of Wikipedia + Ollama-embed calls —
+expect it to take a while (the script backs off automatically if Wikipedia
+rate-limits it, rather than failing).
 
 **Run the knowledge server**, alongside `ollama serve`:
 
