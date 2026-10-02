@@ -31,8 +31,17 @@ export async function searchKnowledge(
 
 export async function checkKnowledgeHealth(
   knowledgeUrl: string
-): Promise<{ chunks: number; topics: string[] }> {
-  const res = await fetch(`${knowledgeUrl}/health`);
+): Promise<{ chunks: number; topics: string[]; model?: string }> {
+  let res: Response;
+  try {
+    res = await fetch(`${knowledgeUrl}/health`);
+  } catch {
+    // A network-level failure surfaces as a bare "Failed to fetch"; say what
+    // it actually means and what to do about it.
+    throw new Error(
+      `Couldn't reach the knowledge server at ${knowledgeUrl}. Is "npm run knowledge-server" running?`
+    );
+  }
   if (!res.ok) throw new Error(`Knowledge server responded with status ${res.status}`);
   return res.json();
 }

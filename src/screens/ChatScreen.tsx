@@ -1,7 +1,15 @@
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { FlatList, KeyboardAvoidingView, Platform, StyleSheet, Text, View } from 'react-native';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  FlatList,
+  KeyboardAvoidingView,
+  Platform,
+  StyleSheet,
+  Text,
+  useWindowDimensions,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { searchKnowledge } from '../api/knowledge';
 import { streamChat, OllamaError } from '../api/ollama';
@@ -9,7 +17,16 @@ import { ChatInput } from '../components/ChatInput';
 import { ConversationDrawer } from '../components/ConversationDrawer';
 import { IconButton } from '../components/IconButton';
 import { MessageBubble } from '../components/MessageBubble';
+import { NowPlayingBar } from '../components/NowPlayingBar';
 import { Panel } from '../components/Panel';
+import {
+  baselineLift,
+  BUTTERFLY_ROWS,
+  HEART_ROWS,
+  PixelButterfly,
+  PixelHeart,
+} from '../components/PixelArt';
+import { PromptSuggestions, shuffledPool } from '../components/PromptSuggestions';
 import { SettingsModal } from '../components/SettingsModal';
 import {
   Conversation,
@@ -22,13 +39,24 @@ import {
 } from '../conversations';
 import { SYSTEM_PROMPT } from '../persona';
 import * as settings from '../settings';
+import { useSpotify } from '../spotify/useSpotify';
 import { blockFont, colors, headerGradient, spacing } from '../theme';
 import { ChatMessage } from '../types';
 
 let nextId = 0;
 const newId = () => `${Date.now()}-${nextId++}`;
 
+// "play Jolene", "play some Dolly" — handled locally against Spotify instead
+// of being sent to the language model.
+const PLAY_COMMAND = /^\s*play\s+(.+?)\s*$/i;
+const GENERIC_PLAY = /^(some\s+)?(dolly(\s+parton)?|music|something|songs?)$/i;
+
 export function ChatScreen() {
+  const spotify = useSpotify();
+  const compact = useWindowDimensions().width < 500;
+  const titleFontSize = compact ? 24 : 30;
+  const butterflyLift = baselineLift(BUTTERFLY_ROWS, titleFontSize);
+  const heartsLift = baselineLift(HEART_ROWS, titleFontSize);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
   const [settingsVisible, setSettingsVisible] = useState(false);
@@ -40,8 +68,18 @@ export function ChatScreen() {
   const [knowledgeUrl, setKnowledgeUrl] = useState('');
   const [knowledgeEnabled, setKnowledgeEnabled] = useState(true);
   const [ttsUrl, setTtsUrl] = useState('');
-  const [ttsEnabled, setTtsEnabled] = useState(false);
+  const [ttsEnabled, setTtsEnabled] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // Which starters to offer, reshuffled for every new chat so they stay fresh.
+  const [suggestionOrder, setSuggestionOrder] = useState(shuffledPool);
+  const suggestions = useMemo(
+    () =>
+      suggestionOrder
+        .filter((s) => !s.needsSpotify || spotify.connected)
+        .slice(0, 4)
+        .map((s) => s.text),
+    [suggestionOrder, spotify.connected]
+  );
   const abortRef = useRef<AbortController | null>(null);
   const listRef = useRef<FlatList<ChatMessage>>(null);
   const conversationIdRef = useRef<string>(newId());
@@ -110,6 +148,7 @@ export function ChatScreen() {
     setIsStreaming(false);
     conversationIdRef.current = newId();
     skipNextAutosave.current = true;
+    setSuggestionOrder(shuffledPool());
     setMessages([]);
     setActiveConversationIdState(null);
     setError(null);
@@ -138,7 +177,42 @@ export function ChatScreen() {
     }
   };
 
+  const handlePlayCommand = async (text: string, query: string) => {
+    setError(null);
+    setIsStreaming(true);
+    setMessages((prev) => [...prev, { id: newId(), role: 'user', content: text }]);
+
+    // playDolly() must be reached without an await first: browsers only allow
+    // audio to start from within the user gesture that triggered the send.
+    let reply: string;
+    if (!spotify.connected) {
+      reply = 'Connect your Spotify in Settings first, sugar, then ask me again.';
+    } else {
+      const generic = GENERIC_PLAY.test(query);
+      try {
+        const tracks = await spotify.playDolly(generic ? null : query);
+        reply =
+          tracks.length === 0
+            ? `I couldn't find "${query}" by Dolly, honey.`
+            : generic
+              ? "Here's a few of Dolly's finest."
+              : `Playing "${tracks[0].name}" by ${tracks[0].artist}.`;
+      } catch (err) {
+        reply = err instanceof Error ? err.message : 'Something went wrong with Spotify.';
+      }
+    }
+
+    setMessages((prev) => [...prev, { id: newId(), role: 'assistant', content: reply }]);
+    setIsStreaming(false);
+  };
+
   const handleSend = async (text: string) => {
+    const playMatch = spotify.supported ? text.match(PLAY_COMMAND) : null;
+    if (playMatch) {
+      await handlePlayCommand(text, playMatch[1]);
+      return;
+    }
+
     setError(null);
     const userMessage: ChatMessage = { id: newId(), role: 'user', content: text };
     const assistantMessage: ChatMessage = { id: newId(), role: 'assistant', content: '' };
@@ -215,7 +289,10 @@ export function ChatScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
-      <Panel variant="raised" style={[styles.header, styles.headerBevelOnly]}>
+      <Panel
+        variant="raised"
+        style={[styles.header, styles.headerBevelOnly, compact && styles.headerCompact]}
+      >
         <LinearGradient
           colors={headerGradient}
           start={{ x: 0, y: 0 }}
@@ -231,10 +308,17 @@ export function ChatScreen() {
         </IconButton>
 
         <View style={styles.titleRow}>
-          <Ionicons name="sparkles" size={16} color={colors.textPrimary} />
-          <Text style={styles.headerTitle}>Dolly Pocket</Text>
-          <MaterialCommunityIcons name="butterfly" size={22} color={colors.textPrimary} />
-          <Ionicons name="heart" size={14} color={colors.textPrimary} />
+          <View style={{ transform: [{ translateY: -butterflyLift }] }}>
+            <PixelButterfly />
+          </View>
+          <Text style={[styles.headerTitle, compact && styles.headerTitleCompact]} numberOfLines={1}>
+            Dolly Pocket
+          </Text>
+          <View style={[styles.hearts, { transform: [{ translateY: -heartsLift }] }]}>
+            <PixelHeart />
+            <PixelHeart />
+            <PixelHeart />
+          </View>
         </View>
 
         <IconButton size={36} onPress={() => setSettingsVisible(true)} accessibilityLabel="Settings">
@@ -259,6 +343,18 @@ export function ChatScreen() {
           onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: true })}
         />
         {error && <Text style={styles.errorBanner}>{error}</Text>}
+        {spotify.connected && (
+          <NowPlayingBar
+            nowPlaying={spotify.nowPlaying}
+            error={spotify.error}
+            onTogglePlay={spotify.togglePlay}
+            onNext={spotify.nextTrack}
+            onPrevious={spotify.previousTrack}
+          />
+        )}
+        {messages.length === 0 && (
+          <PromptSuggestions prompts={suggestions} disabled={isStreaming} onSelect={handleSend} />
+        )}
         <ChatInput disabled={isStreaming} onSend={handleSend} />
       </KeyboardAvoidingView>
 
@@ -280,6 +376,10 @@ export function ChatScreen() {
         knowledgeEnabled={knowledgeEnabled}
         ttsUrl={ttsUrl}
         ttsEnabled={ttsEnabled}
+        spotifyUnavailableReason={spotify.unavailableReason}
+        spotifyConnected={spotify.connected}
+        onSpotifyConnect={spotify.connect}
+        onSpotifyDisconnect={spotify.disconnect}
         onSave={handleSaveSettings}
         onClose={() => setSettingsVisible(false)}
       />
@@ -308,15 +408,28 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
     overflow: 'hidden',
   },
+  headerCompact: {
+    paddingHorizontal: spacing.sm,
+  },
   titleRow: {
     flex: 1,
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    gap: spacing.xs,
+    gap: spacing.sm,
+  },
+  // Three hearts plus a butterfly need more room than a phone-width header
+  // has at the full title size, so narrow screens get a smaller title.
+  headerTitleCompact: {
+    fontSize: 24,
+  },
+  hearts: {
+    flexDirection: 'row',
+    gap: 2,
   },
   headerTitle: {
-    fontSize: 22,
+    flexShrink: 1,
+    fontSize: 30,
     fontWeight: '800',
     fontFamily: blockFont,
     color: colors.textPrimary,

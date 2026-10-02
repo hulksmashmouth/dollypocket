@@ -1,4 +1,3 @@
-import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useRef } from 'react';
 import {
@@ -12,6 +11,7 @@ import {
   View,
 } from 'react-native';
 import { Conversation } from '../conversations';
+import { BUTTERFLY_ANTENNA_ROWS, DEFAULT_PIXEL, PixelButterfly } from './PixelArt';
 import { bevel, blockFont, colors, headerGradient, spacing } from '../theme';
 
 interface Props {
@@ -25,6 +25,15 @@ interface Props {
 }
 
 const DRAWER_WIDTH = Math.min(300, Dimensions.get('window').width * 0.82);
+const HEADER_FONT_SIZE = 16;
+
+// Centers the butterfly's wings/body (not its antennae) on the title's
+// letters. Two parts: the antennae push the wings' centre half their height
+// below the box centre, and a line of text's visible letters sit ~0.058em
+// above its line-box centre (no descenders in this title).
+const LETTERS_ABOVE_LINE_CENTER_EM = 0.058;
+const BUTTERFLY_LIFT =
+  (BUTTERFLY_ANTENNA_ROWS * DEFAULT_PIXEL) / 2 + LETTERS_ABOVE_LINE_CENTER_EM * HEADER_FONT_SIZE;
 
 export function ConversationDrawer({
   visible,
@@ -57,9 +66,10 @@ export function ConversationDrawer({
               end={{ x: 1, y: 0 }}
               style={StyleSheet.absoluteFill}
             />
-            <Ionicons name="heart" size={13} color={colors.textPrimary} />
+            <View style={{ transform: [{ translateY: -BUTTERFLY_LIFT }] }}>
+              <PixelButterfly />
+            </View>
             <Text style={styles.headerTitle}>The Gabbin' Cabinet</Text>
-            <Ionicons name="sparkles" size={14} color={colors.textPrimary} />
           </View>
 
           <Pressable style={styles.newChatButton} onPress={onNewChat}>
@@ -146,7 +156,7 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontFamily: blockFont,
-    fontSize: 16,
+    fontSize: HEADER_FONT_SIZE,
     fontWeight: '800',
     color: colors.textPrimary,
   },

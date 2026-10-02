@@ -100,3 +100,10 @@ export async function listModels(baseUrl: string): Promise<string[]> {
   const data = await res.json();
   return (data.models ?? []).map((m: { name: string }) => m.name);
 }
+
+export async function getOllamaVersion(baseUrl: string): Promise<string> {
+  const res = await fetch(`${baseUrl}/api/version`);
+  if (!res.ok) throw new OllamaError(`Failed to read Ollama version (status ${res.status})`);
+  const data = await res.json();
+  return data.version;
+}

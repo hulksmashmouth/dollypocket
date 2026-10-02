@@ -1,8 +1,15 @@
-import Constants from 'expo-constants';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { checkKnowledgeHealth } from '../api/knowledge';
+import { getOllamaVersion } from '../api/ollama';
 import { checkTtsHealth, TtsError } from '../api/tts';
+import {
+  deviceRows,
+  KIOSK_HARDWARE,
+  KIOSK_SOFTWARE,
+  softwareRows,
+  SpecRowData,
+} from '../techSpecs';
 import { bevel, blockFont, colors, spacing } from '../theme';
 import { Checkbox } from './Checkbox';
 import { Disclosure } from './Disclosure';
@@ -16,6 +23,10 @@ interface Props {
   knowledgeEnabled: boolean;
   ttsUrl: string;
   ttsEnabled: boolean;
+  spotifyUnavailableReason: string | null;
+  spotifyConnected: boolean;
+  onSpotifyConnect: () => void;
+  onSpotifyDisconnect: () => void;
   onSave: (model: string, knowledgeEnabled: boolean, ttsEnabled: boolean) => void;
   onClose: () => void;
 }
@@ -30,6 +41,10 @@ export function SettingsModal({
   knowledgeEnabled,
   ttsUrl,
   ttsEnabled,
+  spotifyUnavailableReason,
+  spotifyConnected,
+  onSpotifyConnect,
+  onSpotifyDisconnect,
   onSave,
   onClose,
 }: Props) {
@@ -54,6 +69,46 @@ export function SettingsModal({
       setTtsError(null);
     }
   }, [visible, model, knowledgeEnabled, ttsEnabled]);
+
+  // What the running servers report about themselves, for Tech Specs. Fetched
+  // whenever Settings opens; null means that server couldn't be reached.
+  const [runtime, setRuntime] = useState<{
+    ollama: string | null;
+    embedModel: string | null;
+    voice: string | null;
+  } | null>(null);
+
+  useEffect(() => {
+    if (!visible) return;
+    let cancelled = false;
+    (async () => {
+      const [ollama, knowledge, tts] = await Promise.allSettled([
+        getOllamaVersion(baseUrl),
+        checkKnowledgeHealth(knowledgeUrl),
+        checkTtsHealth(ttsUrl),
+      ]);
+      if (cancelled) return;
+      setRuntime({
+        ollama: ollama.status === 'fulfilled' ? ollama.value : null,
+        embedModel: knowledge.status === 'fulfilled' ? (knowledge.value.model ?? 'unknown') : null,
+        voice: tts.status === 'fulfilled' ? tts.value.voice : null,
+      });
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [visible, baseUrl, knowledgeUrl, ttsUrl]);
+
+  const notRunning = 'not running';
+  const runtimeRows: SpecRowData[] = [
+    { label: 'Ollama', value: runtime?.ollama ?? (runtime ? notRunning : 'checking…') },
+    { label: 'Chat model', value: model },
+    { label: 'Embedding model', value: runtime?.embedModel ?? (runtime ? notRunning : 'checking…') },
+    {
+      label: 'Voice (Piper)',
+      value: runtime?.voice ?? (runtime ? notRunning : 'checking…'),
+    },
+  ];
 
   const testKnowledgeConnection = async () => {
     setKnowledgeStatus('checking');
@@ -91,6 +146,26 @@ export function SettingsModal({
         >
           <Text style={styles.title}>Settings</Text>
 
+          <View style={styles.switchRow}>
+            <Text style={styles.label}>Dolly's Voice</Text>
+            <Checkbox value={ttsEnabledInput} onValueChange={setTtsEnabledInput} />
+          </View>
+
+          <Pressable style={styles.testButton} onPress={testTtsConnection} disabled={!ttsEnabledInput}>
+            {ttsStatus === 'checking' ? (
+              <ActivityIndicator color={colors.textPrimary} />
+            ) : (
+              <Text style={[styles.testButtonText, !ttsEnabledInput && styles.testButtonTextDisabled]}>
+                Test connection
+              </Text>
+            )}
+          </Pressable>
+
+          {ttsStatus === 'ok' && <Text style={styles.success}>Connected. Voice: {ttsVoice}</Text>}
+          {ttsStatus === 'error' && <Text style={styles.errorText}>{ttsError}</Text>}
+
+          <View style={styles.divider} />
+
           <ModelPicker baseUrl={baseUrl} value={modelInput} onChange={setModelInput} />
 
           <View style={styles.divider} />
@@ -127,31 +202,40 @@ export function SettingsModal({
 
           <View style={styles.divider} />
 
-          <View style={styles.switchRow}>
-            <Text style={styles.label}>Dolly's Voice</Text>
-            <Checkbox value={ttsEnabledInput} onValueChange={setTtsEnabledInput} />
-          </View>
-
-          <Pressable style={styles.testButton} onPress={testTtsConnection} disabled={!ttsEnabledInput}>
-            {ttsStatus === 'checking' ? (
-              <ActivityIndicator color={colors.textPrimary} />
-            ) : (
-              <Text style={[styles.testButtonText, !ttsEnabledInput && styles.testButtonTextDisabled]}>
-                Test connection
+          <Text style={styles.label}>Spotify</Text>
+          {spotifyUnavailableReason ? (
+            <Text style={styles.note}>{spotifyUnavailableReason}</Text>
+          ) : (
+            <>
+              <Text style={styles.note}>
+                {spotifyConnected
+                  ? 'Connected — type "play Jolene" in the chat to hear Dolly.'
+                  : 'Connect a Premium account, then ask Dolly to play her songs.'}
               </Text>
-            )}
-          </Pressable>
-
-          {ttsStatus === 'ok' && <Text style={styles.success}>Connected. Voice: {ttsVoice}</Text>}
-          {ttsStatus === 'error' && <Text style={styles.errorText}>{ttsError}</Text>}
+              <Pressable
+                style={styles.testButton}
+                onPress={spotifyConnected ? onSpotifyDisconnect : onSpotifyConnect}
+              >
+                <Text style={styles.testButtonText}>
+                  {spotifyConnected ? 'Disconnect Spotify' : 'Connect Spotify'}
+                </Text>
+              </Pressable>
+            </>
+          )}
 
           <Disclosure title="Tech Specs">
-            <SpecRow label="Platform" value={`${Platform.OS} ${Platform.Version ?? ''}`.trim()} />
-            <SpecRow label="App version" value={Constants.expoConfig?.version ?? 'unknown'} />
-            <SpecRow label="Ollama server" value={baseUrl} />
-            <SpecRow label="Knowledge server" value={knowledgeUrl} />
-            <SpecRow label="TTS server" value={ttsUrl} />
-            <SpecRow label="Current model" value={model} last />
+            <SpecGroup title="Software" rows={[...softwareRows(), ...runtimeRows]} />
+            <SpecGroup
+              title="Servers"
+              rows={[
+                { label: 'Ollama', value: baseUrl },
+                { label: 'Knowledge', value: knowledgeUrl },
+                { label: 'Voice (TTS)', value: ttsUrl },
+              ]}
+            />
+            <SpecGroup title="This device" rows={deviceRows()} />
+            <SpecGroup title="Kiosk build — hardware" rows={KIOSK_HARDWARE} />
+            <SpecGroup title="Kiosk build — software" rows={KIOSK_SOFTWARE} last />
           </Disclosure>
         </ScrollView>
 
@@ -171,13 +255,16 @@ export function SettingsModal({
   );
 }
 
-function SpecRow({ label, value, last }: { label: string; value: string; last?: boolean }) {
+function SpecGroup({ title, rows, last }: { title: string; rows: SpecRowData[]; last?: boolean }) {
   return (
-    <View style={[styles.specRow, last && styles.specRowLast]}>
-      <Text style={styles.specLabel}>{label}</Text>
-      <Text style={styles.specValue} numberOfLines={1}>
-        {value}
-      </Text>
+    <View style={!last && styles.specGroupGap}>
+      <Text style={styles.specGroupTitle}>{title}</Text>
+      {rows.map((row, i) => (
+        <View key={row.label} style={[styles.specRow, i === rows.length - 1 && styles.specRowLast]}>
+          <Text style={styles.specLabel}>{row.label}</Text>
+          <Text style={styles.specValue}>{row.value}</Text>
+        </View>
+      ))}
     </View>
   );
 }
@@ -225,6 +312,12 @@ const styles = StyleSheet.create({
   testButtonTextDisabled: {
     color: colors.textMuted,
   },
+  note: {
+    fontFamily: blockFont,
+    fontSize: 13,
+    color: colors.textSecondary,
+    marginTop: 2,
+  },
   success: {
     color: colors.success,
     fontFamily: blockFont,
@@ -249,6 +342,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+  },
+  specGroupGap: {
+    marginBottom: spacing.lg,
+  },
+  specGroupTitle: {
+    fontFamily: blockFont,
+    fontSize: 12,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+    color: colors.textPrimary,
+    marginBottom: 4,
   },
   specRow: {
     flexDirection: 'row',

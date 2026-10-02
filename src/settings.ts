@@ -2,7 +2,11 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 
 const MODEL_KEY = 'dollypocket.model';
-const TTS_ENABLED_KEY = 'dollypocket.ttsEnabled';
+// ".v2": the default flipped from off to on, and anyone who'd already pressed
+// Save in Settings had an explicit "false" stored under the old key, which
+// would have silently overridden the new default. A fresh key means everyone
+// starts from the new default (on) and can still turn it off.
+const TTS_ENABLED_KEY = 'dollypocket.ttsEnabled.v2';
 const KNOWLEDGE_ENABLED_KEY = 'dollypocket.knowledgeEnabled';
 
 export const DEFAULT_MODEL = 'qwen2.5:3b';
@@ -41,11 +45,11 @@ export async function setModel(model: string): Promise<void> {
   await AsyncStorage.setItem(MODEL_KEY, model.trim());
 }
 
-// Off by default: TTS is a fully separate server most people won't have set
-// up (see deploy/pi/README.md).
+// On by default (Dolly's Voice). Without the Piper server running (see
+// deploy/pi/README.md) the speaker button on a reply just shows a warning icon.
 export async function getTtsEnabled(): Promise<boolean> {
   const stored = await AsyncStorage.getItem(TTS_ENABLED_KEY);
-  return stored === 'true';
+  return stored === null ? true : stored === 'true';
 }
 
 export async function setTtsEnabled(enabled: boolean): Promise<void> {

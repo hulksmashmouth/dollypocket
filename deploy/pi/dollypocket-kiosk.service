@@ -37,7 +37,7 @@ ExecStart=/usr/bin/cage -- /usr/bin/chromium \
   --no-first-run \
   --autoplay-policy=no-user-gesture-required \
   --check-for-update-interval=31536000 \
-  http://localhost:8080
+  http://127.0.0.1:8080
 # cage's own Wayland compositor rotation, not the kernel's fbcon-only
 # `video=...,rotate=` cmdline flag (that one only affects the text console —
 # wlroots clients like cage/Chromium need this instead). Adjust the panel

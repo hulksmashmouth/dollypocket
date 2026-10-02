@@ -92,7 +92,7 @@ rather than failing outright.
 
 Lets the app read replies aloud, fully offline — no cloud TTS. Skip this
 section (and `dollypocket-tts` in the next step) if you don't want the
-feature; it's off by default in the app's Settings either way.
+feature; Dolly's Voice is on by default in Settings, so turn it off there if you skip this.
 
 ```sh
 cd /home/pi/dollypocket/server
@@ -106,7 +106,43 @@ there's no genuinely Southern-accented option, so this is as close as local
 TTS gets. Turn it on and point it at `http://localhost:11436` from the app's
 Settings sheet once `dollypocket-tts` (below) is running.
 
-## 7. Install the services
+## 7. Optional: Spotify (play Dolly's music in the kiosk browser)
+
+Lets you type `play Jolene` (or `play some Dolly`) in the chat and hear it
+through the kiosk, using Spotify's Web Playback SDK — the page itself becomes
+a Spotify device. Needs **Spotify Premium**. Skip this section if you don't
+want it; the Spotify section in Settings just explains what's missing.
+
+1. In the [Spotify developer dashboard](https://developer.spotify.com/dashboard)
+   create an app and register the redirect URI **`http://127.0.0.1:8080/`**
+   exactly. Spotify rejects `localhost` — which is why
+   `dollypocket-kiosk.service` loads `http://127.0.0.1:8080` rather than
+   `localhost`. (Since Feb 2026, new dev-mode apps need the owner to have
+   Premium and are capped at 5 users — plenty for personal use.)
+2. Give the build your client ID (it's a public value, not a secret) and
+   rebuild — Expo inlines it at bundle time:
+   ```sh
+   cd /home/pi/dollypocket
+   echo 'EXPO_PUBLIC_SPOTIFY_CLIENT_ID=paste_your_client_id_here' > .env.local
+   npx expo export --platform web
+   ```
+3. Spotify's player needs Widevine DRM in Chromium. Raspberry Pi's own
+   Chromium can use the `libwidevinecdm0` package; check it exists for your
+   architecture before installing:
+   ```sh
+   apt-cache policy libwidevinecdm0
+   sudo apt install -y libwidevinecdm0
+   sudo systemctl restart dollypocket-kiosk
+   ```
+   If apt reports no candidate, Chromium here can't decode Spotify and the
+   app will show "This browser can't play Spotify" — see Troubleshooting.
+4. Open Settings → Spotify → **Connect Spotify**. The first login happens in
+   the kiosk's own browser, so you'll need a keyboard (USB or the Bluetooth
+   one); after that the refresh token keeps you signed in.
+5. Audio has to leave the Pi somehow: the Pi 5 has no 3.5mm jack, so use
+   HDMI audio, USB, or Bluetooth.
+
+## 8. Install the services
 
 ```sh
 sudo cp deploy/pi/*.service /etc/systemd/system/
@@ -122,7 +158,7 @@ sudo systemctl enable --now seatd dollypocket-web dollypocket-knowledge dollypoc
 - **dollypocket-tts** — Piper text-to-speech on `:11436` (see step 6 above);
   safe to `systemctl disable dollypocket-tts` if you skipped that step
 - **dollypocket-kiosk** — `cage` (minimal Wayland kiosk compositor) running
-  Chromium fullscreen against `localhost:8080`
+  Chromium fullscreen against `127.0.0.1:8080`
 
 The app's `guessDefaultBaseUrl()`/`guessDefaultKnowledgeUrl()`/
 `guessDefaultTtsUrl()` already fall back to `localhost` when there's no Expo
@@ -130,7 +166,7 @@ dev-server manifest present (i.e. exactly this production case), so no
 Settings changes are needed on first boot beyond turning TTS on if you set it
 up.
 
-## 8. Sanity checks
+## 9. Sanity checks
 
 ```sh
 systemctl status dollypocket-web dollypocket-knowledge dollypocket-tts dollypocket-kiosk ollama
@@ -154,6 +190,26 @@ curl localhost:11436/health      # should report the configured Piper voice
   since the panel isn't picked yet.
 
 ## Troubleshooting
+
+- **Spotify says "INVALID_CLIENT: Invalid redirect URI" (or Settings tells you
+  to open the page at 127.0.0.1)**: Spotify only accepts `http` redirects to
+  the loopback IP literal `127.0.0.1`, never the `localhost` hostname, and the
+  URI must be registered in the dashboard exactly (`http://127.0.0.1:8080/`,
+  trailing slash included). The kiosk must therefore load
+  `http://127.0.0.1:8080` — if your installed copy of
+  `/etc/systemd/system/dollypocket-kiosk.service` still says `localhost`,
+  change it and `sudo systemctl daemon-reload && sudo systemctl restart
+  dollypocket-kiosk`.
+
+- **Spotify shows "This browser can't play Spotify"**: Chromium has no
+  Widevine DRM module, which the Web Playback SDK needs. Run
+  `apt-cache policy libwidevinecdm0` — if it lists a candidate, install it
+  (step 7) and restart the kiosk. If there's no candidate for your
+  architecture, in-browser playback isn't possible on this Chromium; the
+  fallback is [Raspotify](https://dtcooper.github.io/raspotify/), which makes
+  the Pi itself a Spotify Connect speaker (Premium, personal use only; it's
+  built on the unofficial librespot library) — the app would then need to
+  target that device instead of an in-page player.
 
 - **Need to rotate the display (e.g. a portrait panel mounted landscape)**:
   the kernel's `video=...,rotate=` cmdline parameter only rotates the text

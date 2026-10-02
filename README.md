@@ -124,7 +124,7 @@ they don't show up as visible chat bubbles.
 
 Dolly Pocket can speak assistant replies using [Piper](https://github.com/OHF-Voice/piper1-gpl),
 a fully local/offline text-to-speech engine — no cloud service, no API key.
-Off by default; each assistant bubble gets a speaker button once it's set up.
+On by default (Settings → Dolly's Voice); each assistant bubble gets a speaker button, which shows a warning icon until the Piper server below is running.
 
 **Install Piper in a venv** (avoids fighting the system Python):
 
@@ -146,8 +146,32 @@ PYTHON_BIN=$(pwd)/server/piper-venv/bin/python3 npm run tts-server
 
 It listens on port 11436. The TTS server URL is guessed the same way as
 Ollama's (same host, port 11436) — not editable in Settings, visible read-only
-in its Tech Specs panel. Toggle **Read replies aloud** on and tap **Test
+in its Tech Specs panel. Toggle **Dolly's Voice** on and tap **Test
 connection** to confirm it can reach Piper.
+
+## 5. Optional: play Dolly's music (Spotify, web version only)
+
+Type `play Jolene` (or `play some Dolly`) in the chat and the page plays it
+through Spotify's Web Playback SDK — the browser tab becomes a Spotify device.
+Web only (the SDK is browser-only, so Expo Go/native is unsupported), and it
+needs **Spotify Premium** plus Widevine DRM support in the browser. Searches
+are limited to tracks by Dolly Parton.
+
+1. Create an app in the [Spotify developer dashboard](https://developer.spotify.com/dashboard)
+   and register the redirect URI(s) exactly as `http://127.0.0.1:8081/`
+   (`npm run web`) and, for the Pi kiosk, `http://127.0.0.1:8080/`. Spotify
+   rejects `localhost` — **open the app at `http://127.0.0.1:8081`, not
+   `localhost:8081`**. (Since Feb 2026, new dev-mode apps need the owner to
+   have Premium and are capped at 5 users.)
+2. `cp .env.example .env.local` and paste your client ID into
+   `EXPO_PUBLIC_SPOTIFY_CLIENT_ID` (public by design — the app uses PKCE, so
+   there is no client secret). Restart `npm run web`.
+3. Open Settings → Spotify → **Connect Spotify**, log in, and you'll land
+   back in the app with a now-playing bar above the chat input.
+
+Anything you type that starts with `play ` is handled by Spotify instead of
+being sent to the language model, whenever Spotify is available (web build
+with a client ID set).
 
 ## Project layout
 
@@ -162,6 +186,11 @@ src/
   api/ollama.ts           streamChat() + listModels() against Ollama's HTTP API
   api/knowledge.ts         searchKnowledge() + checkKnowledgeHealth() against the knowledge server
   api/tts.ts               synthesizeSpeech() + checkTtsHealth() against the TTS server
+  api/spotify.ts           searchDollyTracks() + startPlayback() against Spotify's Web API
+  spotify/
+    pkce.ts                PKCE verifier/challenge helpers (RFC 7636)
+    auth.ts                login redirect, token exchange/refresh/storage
+    useSpotify.ts          loads the Web Playback SDK, owns the in-page player
   components/
     MessageBubble.tsx      renders replies + the per-bubble speaker button
     ChatInput.tsx
@@ -172,6 +201,7 @@ src/
     IconButton.tsx         small raised-bevel box wrapping a vector icon
     Checkbox.tsx           boxy sunken-well toggle (replaces native Switch)
     Disclosure.tsx         collapsible "hider panel" (progressive disclosure)
+    NowPlayingBar.tsx      track + transport controls strip for Spotify playback
   screens/
     ChatScreen.tsx         message list, streaming state, conversation
                           persistence, wiring

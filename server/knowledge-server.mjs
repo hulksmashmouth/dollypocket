@@ -47,16 +47,36 @@ async function embedQuery(text) {
   return data.embeddings[0];
 }
 
+// The web build calls this server from a different origin (the page is on one
+// port, this is on another), so browsers require CORS headers — including a
+// reply to the OPTIONS preflight they send before a JSON POST. curl and the
+// native apps don't enforce this, which is why it can look fine outside a
+// browser. Every response needs the header, not just the happy path.
+const CORS_HEADERS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type',
+};
+
 function send(res, status, body) {
   const json = JSON.stringify(body);
-  res.writeHead(status, { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(json) });
+  res.writeHead(status, {
+    'Content-Type': 'application/json',
+    'Content-Length': Buffer.byteLength(json),
+    ...CORS_HEADERS,
+  });
   res.end(json);
 }
 
 const server = createServer(async (req, res) => {
+  if (req.method === 'OPTIONS') {
+    res.writeHead(204, CORS_HEADERS);
+    return res.end();
+  }
+
   if (req.method === 'GET' && req.url === '/health') {
     const topics = [...new Set(chunks.map((c) => c.topic))];
-    return send(res, 200, { status: 'ok', chunks: chunks.length, topics });
+    return send(res, 200, { status: 'ok', chunks: chunks.length, topics, model: EMBED_MODEL });
   }
 
   if (req.method === 'POST' && req.url === '/search') {
