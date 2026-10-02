@@ -76,7 +76,7 @@ export function ChatScreen() {
     () =>
       suggestionOrder
         .filter((s) => !s.needsSpotify || spotify.connected)
-        .slice(0, 4)
+        .slice(0, 3)
         .map((s) => s.text),
     [suggestionOrder, spotify.connected]
   );
