@@ -47,3 +47,8 @@ yarn-error.*
 # Piper TTS venv + downloaded voice models — large, platform-specific, re-fetchable
 /server/piper-venv/
 /server/voices/
+
+# Kokoro TTS venv + downloaded model/voice files — same deal as Piper's
+/server/kokoro-venv/
+/server/kokoro/
+__pycache__/

@@ -27,6 +27,7 @@
     "knowledge-server": "node server/knowledge-server.mjs",
     "import-knowledge": "node scripts/import-knowledge.mjs",
     "tts-server": "node server/tts-server.mjs",
+    "kokoro-tts-server": "server/kokoro-venv/bin/python server/kokoro-tts-server.py",
     "serve-web": "node server/static-server.mjs"
   },
   "private": true

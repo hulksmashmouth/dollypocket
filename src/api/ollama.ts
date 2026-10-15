@@ -5,11 +5,13 @@ export class OllamaError extends Error {}
 interface OllamaChatChunk {
   message?: { content?: string };
   done?: boolean;
+  done_reason?: string;
   error?: string;
 }
 
 /**
- * Streams a chat completion from Ollama's /api/chat endpoint.
+ * Streams a chat completion from Ollama's /api/chat endpoint. Resolves to
+ * whether the reply was cut off by `maxTokens` rather than finishing on its own.
  *
  * React Native's fetch doesn't expose a readable response.body stream, so we
  * use XHR and read the growing responseText on each progress event instead
@@ -20,11 +22,13 @@ export function streamChat(
   model: string,
   messages: ChatMessage[],
   onToken: (delta: string) => void,
-  signal?: AbortSignal
-): Promise<void> {
+  signal?: AbortSignal,
+  maxTokens?: number
+): Promise<{ truncated: boolean }> {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     let readOffset = 0;
+    let truncated = false;
 
     const abortHandler = () => xhr.abort();
     signal?.addEventListener('abort', abortHandler);
@@ -39,6 +43,7 @@ export function streamChat(
         try {
           const parsed: OllamaChatChunk = JSON.parse(line);
           if (parsed.error) throw new OllamaError(parsed.error);
+          if (parsed.done_reason === 'length') truncated = true;
           const delta = parsed.message?.content;
           if (delta) onToken(delta);
         } catch (err) {
@@ -66,7 +71,7 @@ export function streamChat(
       }
       try {
         consume();
-        resolve();
+        resolve({ truncated });
       } catch (err) {
         reject(err);
       }
@@ -79,7 +84,7 @@ export function streamChat(
 
     xhr.onabort = () => {
       cleanup();
-      resolve();
+      resolve({ truncated: false });
     };
 
     xhr.open('POST', `${baseUrl}/api/chat`);
@@ -89,6 +94,7 @@ export function streamChat(
         model,
         messages: messages.map(({ role, content }) => ({ role, content })),
         stream: true,
+        ...(maxTokens ? { options: { num_predict: maxTokens } } : {}),
       })
     );
   });

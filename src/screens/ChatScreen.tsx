@@ -35,7 +35,7 @@ import {
   saveConversation,
   titleFromMessages,
 } from '../conversations';
-import { SYSTEM_PROMPT } from '../persona';
+import { MAX_REPLY_TOKENS, SYSTEM_PROMPT } from '../persona';
 import * as settings from '../settings';
 import { useSpotify } from '../spotify/useSpotify';
 import { blockFont, colors, headerGradient, spacing } from '../theme';
@@ -48,6 +48,13 @@ const newId = () => `${Date.now()}-${nextId++}`;
 // of being sent to the language model.
 const PLAY_COMMAND = /^\s*play\s+(.+?)\s*$/i;
 const GENERIC_PLAY = /^(some\s+)?(dolly(\s+parton)?|music|something|songs?)$/i;
+
+// Cuts a reply that hit the token cap back to its last complete sentence, so
+// Dolly never trails off mid-word. Keeps it as-is if no sentence ever ended.
+function trimToLastSentence(text: string): string {
+  const match = text.match(/^[\s\S]*[.!?…]["'”’)*_]*(?=\s|$)/);
+  return match ? match[0] : text;
+}
 
 export function ChatScreen() {
   const spotify = useSpotify();
@@ -238,7 +245,7 @@ export function ChatScreen() {
     }
 
     try {
-      await streamChat(
+      const { truncated } = await streamChat(
         baseUrl,
         model,
         apiMessages,
@@ -249,8 +256,16 @@ export function ChatScreen() {
             )
           );
         },
-        controller.signal
+        controller.signal,
+        MAX_REPLY_TOKENS
       );
+      if (truncated) {
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === assistantMessage.id ? { ...m, content: trimToLastSentence(m.content) } : m
+          )
+        );
+      }
       setAutoSpeakId(assistantMessage.id);
     } catch (err) {
       setError(err instanceof OllamaError ? err.message : 'Something went wrong.');
