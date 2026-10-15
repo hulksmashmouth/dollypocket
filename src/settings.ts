@@ -45,8 +45,10 @@ export async function setModel(model: string): Promise<void> {
   await AsyncStorage.setItem(MODEL_KEY, model.trim());
 }
 
-// On by default (Dolly's Voice). Without the Piper server running (see
-// deploy/pi/README.md) the speaker button on a reply just shows a warning icon.
+// On by default (Dolly's Voice): each reply is read aloud as soon as it
+// finishes streaming, and its speaker button replays or stops it. Without the
+// Piper server running (see deploy/pi/README.md) that button just shows a
+// warning icon.
 export async function getTtsEnabled(): Promise<boolean> {
   const stored = await AsyncStorage.getItem(TTS_ENABLED_KEY);
   return stored === null ? true : stored === 'true';

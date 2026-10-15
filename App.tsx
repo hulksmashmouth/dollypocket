@@ -5,11 +5,13 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { DollyDoll } from './src/components/DollyDoll';
 import { ChatScreen } from './src/screens/ChatScreen';
 import { colors } from './src/theme';
+import { injectWebCursorStyles } from './src/webCursor';
 import { injectWebScrollbarStyles } from './src/webScrollbar';
 
 export default function App() {
   useEffect(() => {
     injectWebScrollbarStyles();
+    injectWebCursorStyles();
   }, []);
 
   return (

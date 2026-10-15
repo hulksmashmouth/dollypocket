@@ -69,6 +69,8 @@ export function ChatScreen() {
   const [knowledgeEnabled, setKnowledgeEnabled] = useState(true);
   const [ttsUrl, setTtsUrl] = useState('');
   const [ttsEnabled, setTtsEnabled] = useState(true);
+  // The reply Dolly should read aloud as soon as it's finished streaming.
+  const [autoSpeakId, setAutoSpeakId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   // Which starters to offer, reshuffled for every new chat so they stay fresh.
   const [suggestionOrder, setSuggestionOrder] = useState(shuffledPool);
@@ -265,6 +267,7 @@ export function ChatScreen() {
         },
         controller.signal
       );
+      setAutoSpeakId(assistantMessage.id);
     } catch (err) {
       setError(err instanceof OllamaError ? err.message : 'Something went wrong.');
     } finally {
@@ -337,7 +340,13 @@ export function ChatScreen() {
           keyExtractor={(m) => m.id}
           indicatorStyle="black"
           renderItem={({ item }) => (
-            <MessageBubble message={item} ttsUrl={ttsUrl} ttsEnabled={ttsEnabled} />
+            <MessageBubble
+              message={item}
+              ttsUrl={ttsUrl}
+              ttsEnabled={ttsEnabled}
+              autoSpeak={item.id === autoSpeakId}
+              onAutoSpeakStarted={() => setAutoSpeakId(null)}
+            />
           )}
           contentContainerStyle={styles.listContent}
           onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: true })}

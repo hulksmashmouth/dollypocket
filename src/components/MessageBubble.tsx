@@ -18,9 +18,20 @@ interface Props {
   message: ChatMessage;
   ttsUrl?: string;
   ttsEnabled?: boolean;
+  // Set on a reply that just finished streaming, so Dolly reads it aloud
+  // without a tap. onAutoSpeakStarted lets the parent clear it right away,
+  // so a remount (or scrolling back) never replays it.
+  autoSpeak?: boolean;
+  onAutoSpeakStarted?: () => void;
 }
 
-export function MessageBubble({ message, ttsUrl, ttsEnabled }: Props) {
+export function MessageBubble({
+  message,
+  ttsUrl,
+  ttsEnabled,
+  autoSpeak,
+  onAutoSpeakStarted,
+}: Props) {
   const isUser = message.role === 'user';
   const [speechStatus, setSpeechStatus] = useState<SpeechStatus>('idle');
   const playerRef = useRef<ReturnType<typeof createAudioPlayer> | null>(null);
@@ -33,13 +44,24 @@ export function MessageBubble({ message, ttsUrl, ttsEnabled }: Props) {
 
   useEffect(() => cleanup, []);
 
-  const toggleSpeech = async () => {
+  const showSpeaker = !isUser && ttsEnabled && !!ttsUrl && !!message.content;
+
+  useEffect(() => {
+    if (!autoSpeak || !showSpeaker) return;
+    onAutoSpeakStarted?.();
+    startSpeech();
+  }, [autoSpeak, showSpeaker]);
+
+  const toggleSpeech = () => {
     if (speechStatus === 'playing' || speechStatus === 'loading') {
       cleanup();
       setSpeechStatus('idle');
       return;
     }
+    startSpeech();
+  };
 
+  const startSpeech = async () => {
     stopCurrentSpeech?.();
     stopCurrentSpeech = cleanup;
     setSpeechStatus('loading');
@@ -61,8 +83,6 @@ export function MessageBubble({ message, ttsUrl, ttsEnabled }: Props) {
       setSpeechStatus('error');
     }
   };
-
-  const showSpeaker = !isUser && ttsEnabled && !!ttsUrl && !!message.content;
 
   return (
     <View style={[styles.row, isUser ? styles.rowUser : styles.rowAssistant]}>
