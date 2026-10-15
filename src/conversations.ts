@@ -9,7 +9,6 @@ export interface Conversation {
 }
 
 const CONVERSATIONS_KEY = 'dollypocket.conversations';
-const ACTIVE_ID_KEY = 'dollypocket.activeConversationId';
 
 export async function getConversations(): Promise<Conversation[]> {
   const raw = await AsyncStorage.getItem(CONVERSATIONS_KEY);
@@ -36,15 +35,6 @@ export async function saveConversation(conversation: Conversation): Promise<void
 export async function deleteConversation(id: string): Promise<void> {
   const all = await getConversations();
   await AsyncStorage.setItem(CONVERSATIONS_KEY, JSON.stringify(all.filter((c) => c.id !== id)));
-}
-
-export async function getActiveConversationId(): Promise<string | null> {
-  return AsyncStorage.getItem(ACTIVE_ID_KEY);
-}
-
-export async function setActiveConversationId(id: string | null): Promise<void> {
-  if (id) await AsyncStorage.setItem(ACTIVE_ID_KEY, id);
-  else await AsyncStorage.removeItem(ACTIVE_ID_KEY);
 }
 
 // Titles a conversation from its first user message, since there's no chat

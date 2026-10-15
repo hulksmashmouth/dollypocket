@@ -1,14 +1,17 @@
 import { StatusBar } from 'expo-status-bar';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { DollyDoll } from './src/components/DollyDoll';
+import { SplashScreen } from './src/components/SplashScreen';
 import { ChatScreen } from './src/screens/ChatScreen';
 import { colors } from './src/theme';
 import { injectWebCursorStyles } from './src/webCursor';
 import { injectWebScrollbarStyles } from './src/webScrollbar';
 
 export default function App() {
+  const [showSplash, setShowSplash] = useState(true);
+
   useEffect(() => {
     injectWebScrollbarStyles();
     injectWebCursorStyles();
@@ -22,6 +25,7 @@ export default function App() {
           <DollyDoll size={130} />
         </View>
         <ChatScreen />
+        {showSplash && <SplashScreen onFinish={() => setShowSplash(false)} />}
       </View>
     </SafeAreaProvider>
   );

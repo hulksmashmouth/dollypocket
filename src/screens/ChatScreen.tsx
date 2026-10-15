@@ -31,10 +31,8 @@ import { SettingsModal } from '../components/SettingsModal';
 import {
   Conversation,
   deleteConversation,
-  getActiveConversationId,
   getConversations,
   saveConversation,
-  setActiveConversationId,
   titleFromMessages,
 } from '../conversations';
 import { SYSTEM_PROMPT } from '../persona';
@@ -100,22 +98,10 @@ export function ChatScreen() {
     loadSettings();
   }, [loadSettings]);
 
-  // Resume the last-open conversation on launch, if there is one.
+  // Every launch starts on a fresh chat; past chats stay a tap away in the
+  // drawer, so only the list needs loading here.
   useEffect(() => {
-    (async () => {
-      const [allConversations, activeId] = await Promise.all([
-        getConversations(),
-        getActiveConversationId(),
-      ]);
-      setConversations(allConversations);
-      const active = activeId ? allConversations.find((c) => c.id === activeId) : undefined;
-      if (active) {
-        conversationIdRef.current = active.id;
-        skipNextAutosave.current = true;
-        setMessages(active.messages);
-        setActiveConversationIdState(active.id);
-      }
-    })();
+    getConversations().then(setConversations);
   }, []);
 
   // Autosave the current conversation any time its messages change — this is
@@ -135,7 +121,6 @@ export function ChatScreen() {
       updatedAt: Date.now(),
     };
     saveConversation(conversation);
-    setActiveConversationId(conversation.id);
     setActiveConversationIdState(conversation.id);
     setConversations((prev) => {
       const idx = prev.findIndex((c) => c.id === conversation.id);
@@ -166,7 +151,6 @@ export function ChatScreen() {
     skipNextAutosave.current = true;
     setMessages(conversation.messages);
     setActiveConversationIdState(id);
-    setActiveConversationId(id);
     setError(null);
     setDrawerVisible(false);
   };
