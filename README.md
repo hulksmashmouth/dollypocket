@@ -24,8 +24,8 @@ It runs three ways:
   every new chat.
 - **Knowledge base** — optional Wikipedia retrieval so answers about Dolly are
   grounded in real facts.
-- **Dolly's Voice** — replies read aloud by a local TTS server (Piper, or
-  Kokoro with a blended voice and a Southern drawl).
+- **Dolly's Voice** — replies read aloud with a Southern drawl as they're
+  written, by a local TTS server (Piper on the Pi, or Kokoro).
 - **Spotify** — `play Jolene` in the chat plays it (web build, Premium only).
 - **Look** — flat pastel Win95 UI with hard bevels, pixel-art hearts and
   butterflies, a pixel-art mouse cursor and themed scrollbars on web, and a
@@ -157,23 +157,23 @@ bubbles.
 
 Each assistant reply can be spoken by a fully local TTS server — no cloud
 service, no API key. **Dolly's Voice** is on by default in Settings: replies
-are read aloud as soon as they finish, and each bubble's speaker button
-replays or stops them (it shows a warning icon until a TTS server is running).
+are read aloud sentence by sentence as they're written, and each bubble's
+speaker button stops or replays them (it shows a warning icon until a TTS server is running).
 
 There are two interchangeable servers. Both listen on port 11436 with the same
-API, so the app works with either — run one, not both.
+API, so the app works with either — run one, not both. Both apply the same
+Southern accent (`server/drawl.py`), right on the phonemes: "I" → "Ah"
+("time" → "tahm"), "-ing" → "-in'", the pin/pen merger ("ten" → "tin"),
+"down" → "dæʊn", and drawled stressed vowels ("yes" → "yeh-us", "him" →
+"hee-um"), plus "y'all"/"gonna" word swaps. Replies are spoken a sentence at a
+time as they stream in, so the server needs to keep up with her talking.
 
-### Kokoro (recommended — Southern accent)
+### Kokoro (Mac — richest voice)
 
 [Kokoro](https://github.com/thewh1teagle/kokoro-onnx) has no Southern voice out
-of the box, so Dolly's is built in two layers (`server/kokoro_voice.py`):
-
-- **Timbre** — a weighted blend of Kokoro's stock voices, e.g.
-  `af_heart:0.6,af_bella:0.4`.
-- **Accent** — Southern US pronunciation applied directly to the phonemes:
-  "I" → "Ah" ("time" → "tahm"), "-ing" → "-in'", the pin/pen merger ("ten" →
-  "tin"), and drawled short vowels ("yes" → "yeh-us"). She also speaks ~10%
-  slower.
+of the box, so Dolly's timbre is a weighted blend of its stock voices, e.g.
+`af_heart:0.6,af_bella:0.4` (`server/kokoro_voice.py`), with the drawl on top.
+She also speaks ~10% slower.
 
 **Install** (needs Python 3.12 — Kokoro's dependencies don't install on 3.14):
 
@@ -208,10 +208,12 @@ KOKORO_VOICE="af_heart:0.6,af_bella:0.4" npm run kokoro-tts-server
 | `KOKORO_SPEED` | `0.9`                       | Speaking rate; `1.0` is Kokoro's default |
 | `KOKORO_DRAWL` | `1`                         | `0` turns off the Southern accent        |
 
-### Piper
+### Piper (Raspberry Pi)
 
-[Piper](https://github.com/OHF-Voice/piper1-gpl) is lighter and faster, but its
-voices are neutral American — no Southern accent.
+[Piper](https://github.com/OHF-Voice/piper1-gpl) is much lighter — on a Pi 5 it
+makes speech about 9× faster than real time, so it keeps up even while the
+language model is busy. Its stock `en_US-amy-medium` voice is neutral American;
+the drawl supplies the twang.
 
 ```sh
 cd server
@@ -219,8 +221,14 @@ python3 -m venv piper-venv
 piper-venv/bin/pip install piper-tts
 piper-venv/bin/python3 -m piper.download_voices en_US-amy-medium --data-dir voices
 cd ..
-PYTHON_BIN=$(pwd)/server/piper-venv/bin/python3 npm run tts-server
+npm run tts-server
 ```
+
+| Variable      | Default            | Meaning                                       |
+| ------------- | ------------------ | --------------------------------------------- |
+| `PIPER_VOICE` | `en_US-amy-medium` | Voice model in `server/voices/`               |
+| `PIPER_SPEED` | `0.88`             | Speaking rate; `1.0` is the voice's default   |
+| `PIPER_DRAWL` | `1`                | `0` turns off the Southern accent             |
 
 Either way, tap **Test connection** under Dolly's Voice in Settings to confirm
 the app can reach it.
@@ -306,9 +314,11 @@ src/
 server/
   knowledge-server.mjs     embeds the query via Ollama, cosine-similarity search
                             over data/knowledge.json (port 11435)
-  tts-server.mjs           Piper TTS server (port 11436)
-  kokoro-tts-server.py     Kokoro TTS server, same API and port as tts-server.mjs
-  kokoro_voice.py          Kokoro voice blending + Southern drawl phoneme rules
+  piper-tts-server.py      Piper TTS server (port 11436) — what the Pi runs
+  kokoro-tts-server.py     Kokoro TTS server, same API and port
+  tts_http.py              the HTTP endpoints both TTS servers share
+  drawl.py                 Southern accent rules (word swaps + phoneme shifts)
+  kokoro_voice.py          Kokoro voice blending
   kokoro_audition.py       renders candidate voice blends to compare by ear
   static-server.mjs        serves the exported web build from dist/ (port 8080)
   data/                    git-ignored: knowledge base, TTS cache, auditions
@@ -326,6 +336,3 @@ deploy/pi/                 Raspberry Pi kiosk guide + systemd service files
   to your local servers (App Transport Security otherwise blocks them).
 - The app always opens on a fresh chat; earlier conversations persist in
   AsyncStorage and are reopened from the drawer.
-- The Pi kiosk guide in `deploy/pi/` still sets up Piper for TTS; switching
-  the kiosk to Kokoro means swapping the `dollypocket-tts` service's command
-  for `kokoro-tts-server.py`.

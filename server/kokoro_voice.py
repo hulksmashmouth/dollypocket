@@ -4,32 +4,19 @@ Kokoro ships no Southern-accented voice, so Dolly's is built in two layers:
   1. Timbre — a weighted blend of Kokoro's stock voice styles, written as
      "af_heart:0.6,af_bella:0.4" (weights are normalized, so they needn't sum to 1).
   2. Accent — Kokoro speaks IPA phonemes, so Southern US vowel shifts are
-     applied straight to the phoneme string before synthesis (see DRAWL_RULES).
+     applied straight to the phoneme string before synthesis (see drawl.py).
 """
 
 import io
-import re
 import wave
 from pathlib import Path
 
 import numpy as np
 from kokoro_onnx import Kokoro
 
-MODEL_DIR = Path(__file__).parent / "kokoro"
+from drawl import drawl, southern_text
 
-# Each rule is (pattern, replacement) over espeak IPA, e.g. "tˈaɪm" -> "tˈaːm".
-DRAWL_RULES = [
-    # /aɪ/ glide flattening — the signature Southern vowel: I -> "Ah", time -> "tahm".
-    (re.compile(r"aɪ"), "aː"),
-    # -ing -> -in' ("fixin'", "singin'"); only unstressed word-final, so "sing" keeps its ŋ.
-    (re.compile(r"(?<=[^ˈˌ\s])ɪŋ(?=[\s,.!?;:]|$)"), "ɪn"),
-    # Pin-pen merger: "ten" -> "tin", "when" -> "win", "remember" -> "rimimber".
-    (re.compile(r"ɛ(?=[nm])"), "ɪ"),
-    # Drawl "breaking" of stressed short vowels into a little two-part glide:
-    # "yes" -> "yeh-us", "hand" -> "hay-and".
-    (re.compile(r"(?<=ˈ)([^ˈˌ\s]*?)ɛ(?![ɹə])"), r"\1ɛə"),
-    (re.compile(r"(?<=ˈ)([^ˈˌ\s]*?)æ"), r"\1æɛ"),
-]
+MODEL_DIR = Path(__file__).parent / "kokoro"
 
 
 def load_kokoro() -> Kokoro:
@@ -46,15 +33,11 @@ def blend_voice(kokoro: Kokoro, spec: str) -> np.ndarray:
     return sum(kokoro.get_voice_style(name) * (w / total) for name, w in parts)
 
 
-def drawl(phonemes: str) -> str:
-    for pattern, replacement in DRAWL_RULES:
-        phonemes = pattern.sub(replacement, phonemes)
-    return phonemes
-
-
 def synthesize_wav(
     kokoro: Kokoro, text: str, style: np.ndarray, speed: float, southern: bool
 ) -> bytes:
+    if southern:
+        text = southern_text(text)
     phonemes = kokoro.tokenizer.phonemize(text, "en-us")
     if southern:
         phonemes = drawl(phonemes)

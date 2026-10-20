@@ -88,7 +88,7 @@ and note it deliberately can't pull song lyrics (copyrighted; Wikipedia
 excludes them too). It backs off automatically if Wikipedia rate-limits it
 rather than failing outright.
 
-## 6. Optional: local text-to-speech (Piper)
+## 6. Optional: Dolly's voice (Piper text-to-speech)
 
 Lets the app read replies aloud, fully offline — no cloud TTS. Skip this
 section (and `dollypocket-tts` in the next step) if you don't want the
@@ -101,10 +101,14 @@ piper-venv/bin/pip install piper-tts
 piper-venv/bin/python3 -m piper.download_voices en_US-amy-medium --data-dir voices
 ```
 
-`en_US-amy-medium` is the warmest-sounding voice in Piper's stock catalog —
-there's no genuinely Southern-accented option, so this is as close as local
-TTS gets. Turn it on and point it at `http://localhost:11436` from the app's
-Settings sheet once `dollypocket-tts` (below) is running.
+`en_US-amy-medium` is the warmest-sounding voice in Piper's stock catalog.
+None of Piper's voices are Southern, so `server/piper-tts-server.py` adds the
+accent itself (`server/drawl.py`): it rewrites the pronunciation before
+synthesis ("I" → "Ah", "-ing" → "-in'", drawled vowels) and slows her down a
+touch. It keeps the voice loaded between requests, so each sentence is ready
+in a fraction of a second and she can talk while the reply is still being
+written. Dolly's Voice is on by default once `dollypocket-tts` (below) is
+running.
 
 ## 7. Optional: Spotify (play Dolly's music in the kiosk browser)
 
