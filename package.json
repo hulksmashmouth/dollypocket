@@ -24,6 +24,7 @@
   "scripts": {
     "start": "expo start",
     "web": "expo start --web",
+    "build": "expo export --platform web",
     "knowledge-server": "node server/knowledge-server.mjs",
     "import-knowledge": "node scripts/import-knowledge.mjs",
     "tts-server": "node server/tts-server.mjs",
