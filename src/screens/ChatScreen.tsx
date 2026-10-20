@@ -345,13 +345,15 @@ export function ChatScreen() {
         <FlatList
           ref={listRef}
           data={messages}
+          extraData={isStreaming}
           keyExtractor={(m) => m.id}
           indicatorStyle="black"
-          renderItem={({ item }) => (
+          renderItem={({ item, index }) => (
             <MessageBubble
               message={item}
               ttsUrl={ttsUrl}
               ttsEnabled={ttsEnabled}
+              writing={isStreaming && index === messages.length - 1}
             />
           )}
           contentContainerStyle={styles.listContent}

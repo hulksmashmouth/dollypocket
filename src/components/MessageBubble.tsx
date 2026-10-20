@@ -5,14 +5,17 @@ import { bevel, blockFont, colors } from '../theme';
 import { ChatMessage } from '../types';
 import { IconButton } from './IconButton';
 import { Panel } from './Panel';
+import { ThinkingIndicator, WritingHeart } from './ThinkingIndicator';
 
 interface Props {
   message: ChatMessage;
   ttsUrl?: string;
   ttsEnabled?: boolean;
+  // True while this reply is still streaming in.
+  writing?: boolean;
 }
 
-export function MessageBubble({ message, ttsUrl, ttsEnabled }: Props) {
+export function MessageBubble({ message, ttsUrl, ttsEnabled, writing }: Props) {
   const isUser = message.role === 'user';
   // New replies are spoken by ChatScreen as they stream in; the button here
   // stops that, or replays the whole message.
@@ -39,7 +42,14 @@ export function MessageBubble({ message, ttsUrl, ttsEnabled }: Props) {
       ) : (
         <View style={styles.assistantRow}>
           <Panel variant="raised" style={styles.bubble}>
-            <Text style={styles.textAssistant}>{message.content || '…'}</Text>
+            {writing && !message.content ? (
+              <ThinkingIndicator />
+            ) : (
+              <Text style={styles.textAssistant}>
+                {message.content || '…'}
+                {writing && <WritingHeart />}
+              </Text>
+            )}
           </Panel>
           {showSpeaker && (
             <IconButton size={30} onPress={toggleSpeech} style={styles.speakerButton}>

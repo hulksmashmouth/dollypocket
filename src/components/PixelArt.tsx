@@ -53,6 +53,21 @@ const BUTTERFLY = [
   '.OCCCOOOCCCO.',
   '..OOO.O.OOO..',
 ];
+// The same butterfly mid-flap, wings folded up — alternate it with BUTTERFLY
+// to make it fly.
+const BUTTERFLY_FOLDED = [
+  '....O...O....',
+  '.....O.O.....',
+  '....OO.OO....',
+  '...OAAOAAO...',
+  '...OABOBAO...',
+  '...OAAOAAO...',
+  '....OAOAO....',
+  '.....OOO.....',
+  '....OCOCO....',
+  '....OCOCO....',
+  '.....O.O.....',
+];
 const BUTTERFLY_PALETTE: Palette = {
   O: '#000000',
   A: '#ff6ec7',
@@ -87,6 +102,18 @@ export function PixelHeart({ pixel = DEFAULT_PIXEL }: { pixel?: number }) {
   return <PixelSprite rows={HEART} palette={HEART_PALETTE} pixel={pixel} />;
 }
 
-export function PixelButterfly({ pixel = DEFAULT_PIXEL }: { pixel?: number }) {
-  return <PixelSprite rows={BUTTERFLY} palette={BUTTERFLY_PALETTE} pixel={pixel} />;
+export function PixelButterfly({
+  pixel = DEFAULT_PIXEL,
+  folded = false,
+}: {
+  pixel?: number;
+  folded?: boolean;
+}) {
+  return (
+    <PixelSprite
+      rows={folded ? BUTTERFLY_FOLDED : BUTTERFLY}
+      palette={BUTTERFLY_PALETTE}
+      pixel={pixel}
+    />
+  );
 }
