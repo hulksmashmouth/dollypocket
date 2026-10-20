@@ -139,6 +139,7 @@ export function ChatScreen() {
   const handleNewChat = () => {
     abortRef.current?.abort();
     stopSpeech();
+    spotify.stop();
     setIsStreaming(false);
     conversationIdRef.current = newId();
     skipNextAutosave.current = true;

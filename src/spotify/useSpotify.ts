@@ -17,6 +17,7 @@ interface SdkPlayer {
   addListener(event: string, callback: (data: any) => void): boolean;
   activateElement(): Promise<void>;
   togglePlay(): Promise<void>;
+  pause(): Promise<void>;
   nextTrack(): Promise<void>;
   previousTrack(): Promise<void>;
 }
@@ -53,6 +54,9 @@ export function useSpotify() {
   const [error, setError] = useState<string | null>(null);
   const playerRef = useRef<SdkPlayer | null>(null);
   const deviceIdRef = useRef<string | null>(null);
+  // Set by stop(): the paused track's state updates are ignored so the
+  // now-playing bar stays hidden until the next playDolly().
+  const stoppedRef = useRef(false);
 
   useEffect(() => {
     if (!supported) return;
@@ -90,6 +94,7 @@ export function useSpotify() {
         deviceIdRef.current = null;
       });
       player.addListener('player_state_changed', (state) => {
+        if (stoppedRef.current) return;
         const track = state?.track_window?.current_track;
         setNowPlaying(
           track
@@ -143,6 +148,14 @@ export function useSpotify() {
     setError(null);
   }, []);
 
+  // Pauses playback and hides the now-playing bar (used for a new chat).
+  const stop = useCallback(() => {
+    stoppedRef.current = true;
+    playerRef.current?.pause();
+    setNowPlaying(null);
+    setError(null);
+  }, []);
+
   // Searches Dolly's tracks and plays them. With no query, queues up a spread
   // of her songs. Resolves with what's now playing (empty if nothing matched).
   const playDolly = useCallback(async (query: string | null): Promise<SpotifyTrack[]> => {
@@ -159,6 +172,7 @@ export function useSpotify() {
     const tracks = await searchDollyTracks(query, query ? 1 : 10);
     if (tracks.length > 0) {
       setError(null);
+      stoppedRef.current = false;
       await startPlayback(
         deviceId,
         tracks.map((t) => t.uri)
@@ -175,6 +189,7 @@ export function useSpotify() {
     error,
     connect,
     disconnect,
+    stop,
     playDolly,
     togglePlay: () => playerRef.current?.togglePlay(),
     nextTrack: () => playerRef.current?.nextTrack(),
