@@ -1,87 +1,33 @@
 import { Ionicons } from '@expo/vector-icons';
-import { createAudioPlayer } from 'expo-audio';
-import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
-import { synthesizeSpeech } from '../api/tts';
+import { startSpeech, stopSpeech, useSpeechStatus } from '../speech';
 import { bevel, blockFont, colors } from '../theme';
 import { ChatMessage } from '../types';
 import { IconButton } from './IconButton';
 import { Panel } from './Panel';
 
-type SpeechStatus = 'idle' | 'loading' | 'playing' | 'error';
-
-// Only one bubble should be talking at a time — track whatever's currently
-// playing here so a new press can stop it before starting the next one.
-let stopCurrentSpeech: (() => void) | null = null;
-
 interface Props {
   message: ChatMessage;
   ttsUrl?: string;
   ttsEnabled?: boolean;
-  // Set on a reply that just finished streaming, so Dolly reads it aloud
-  // without a tap. onAutoSpeakStarted lets the parent clear it right away,
-  // so a remount (or scrolling back) never replays it.
-  autoSpeak?: boolean;
-  onAutoSpeakStarted?: () => void;
 }
 
-export function MessageBubble({
-  message,
-  ttsUrl,
-  ttsEnabled,
-  autoSpeak,
-  onAutoSpeakStarted,
-}: Props) {
+export function MessageBubble({ message, ttsUrl, ttsEnabled }: Props) {
   const isUser = message.role === 'user';
-  const [speechStatus, setSpeechStatus] = useState<SpeechStatus>('idle');
-  const playerRef = useRef<ReturnType<typeof createAudioPlayer> | null>(null);
-
-  const cleanup = () => {
-    playerRef.current?.remove();
-    playerRef.current = null;
-    if (stopCurrentSpeech === cleanup) stopCurrentSpeech = null;
-  };
-
-  useEffect(() => cleanup, []);
+  // New replies are spoken by ChatScreen as they stream in; the button here
+  // stops that, or replays the whole message.
+  const speechStatus = useSpeechStatus(message.id);
 
   const showSpeaker = !isUser && ttsEnabled && !!ttsUrl && !!message.content;
 
-  useEffect(() => {
-    if (!autoSpeak || !showSpeaker) return;
-    onAutoSpeakStarted?.();
-    startSpeech();
-  }, [autoSpeak, showSpeaker]);
-
   const toggleSpeech = () => {
     if (speechStatus === 'playing' || speechStatus === 'loading') {
-      cleanup();
-      setSpeechStatus('idle');
+      stopSpeech();
       return;
     }
-    startSpeech();
-  };
-
-  const startSpeech = async () => {
-    stopCurrentSpeech?.();
-    stopCurrentSpeech = cleanup;
-    setSpeechStatus('loading');
-
-    try {
-      const audioUrl = await synthesizeSpeech(ttsUrl!, message.content);
-      const player = createAudioPlayer({ uri: audioUrl });
-      playerRef.current = player;
-      player.addListener('playbackStatusUpdate', (status) => {
-        if (status.didJustFinish) {
-          cleanup();
-          setSpeechStatus('idle');
-        }
-      });
-      player.play();
-      setSpeechStatus('playing');
-    } catch {
-      cleanup();
-      setSpeechStatus('error');
-    }
+    const session = startSpeech(ttsUrl!, message.id);
+    session.push(message.content);
+    session.finish();
   };
 
   return (

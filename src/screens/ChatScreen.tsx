@@ -37,6 +37,7 @@ import {
 } from '../conversations';
 import { MAX_REPLY_TOKENS, SYSTEM_PROMPT } from '../persona';
 import * as settings from '../settings';
+import { SpeechSession, startSpeech, stopSpeech } from '../speech';
 import { useSpotify } from '../spotify/useSpotify';
 import { blockFont, colors, headerGradient, spacing } from '../theme';
 import { ChatMessage } from '../types';
@@ -74,8 +75,6 @@ export function ChatScreen() {
   const [knowledgeEnabled, setKnowledgeEnabled] = useState(true);
   const [ttsUrl, setTtsUrl] = useState('');
   const [ttsEnabled, setTtsEnabled] = useState(true);
-  // The reply Dolly should read aloud as soon as it's finished streaming.
-  const [autoSpeakId, setAutoSpeakId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   // Which starters to offer, reshuffled for every new chat so they stay fresh.
   const [suggestionOrder, setSuggestionOrder] = useState(shuffledPool);
@@ -139,6 +138,7 @@ export function ChatScreen() {
 
   const handleNewChat = () => {
     abortRef.current?.abort();
+    stopSpeech();
     setIsStreaming(false);
     conversationIdRef.current = newId();
     skipNextAutosave.current = true;
@@ -153,6 +153,7 @@ export function ChatScreen() {
     const conversation = conversations.find((c) => c.id === id);
     if (!conversation) return;
     abortRef.current?.abort();
+    stopSpeech();
     setIsStreaming(false);
     conversationIdRef.current = id;
     skipNextAutosave.current = true;
@@ -244,12 +245,19 @@ export function ChatScreen() {
       }
     }
 
+    // Dolly reads the reply aloud sentence by sentence as it streams in.
+    const speech: SpeechSession | null =
+      ttsEnabled && ttsUrl ? startSpeech(ttsUrl, assistantMessage.id) : null;
+    let reply = '';
+
     try {
       const { truncated } = await streamChat(
         baseUrl,
         model,
         apiMessages,
         (delta) => {
+          reply += delta;
+          speech?.push(delta);
           setMessages((prev) =>
             prev.map((m) =>
               m.id === assistantMessage.id ? { ...m, content: m.content + delta } : m
@@ -260,14 +268,14 @@ export function ChatScreen() {
         MAX_REPLY_TOKENS
       );
       if (truncated) {
+        reply = trimToLastSentence(reply);
         setMessages((prev) =>
-          prev.map((m) =>
-            m.id === assistantMessage.id ? { ...m, content: trimToLastSentence(m.content) } : m
-          )
+          prev.map((m) => (m.id === assistantMessage.id ? { ...m, content: reply } : m))
         );
       }
-      setAutoSpeakId(assistantMessage.id);
+      speech?.finish(reply);
     } catch (err) {
+      speech?.stop();
       setError(err instanceof OllamaError ? err.message : 'Something went wrong.');
     } finally {
       setIsStreaming(false);
@@ -343,8 +351,6 @@ export function ChatScreen() {
               message={item}
               ttsUrl={ttsUrl}
               ttsEnabled={ttsEnabled}
-              autoSpeak={item.id === autoSpeakId}
-              onAutoSpeakStarted={() => setAutoSpeakId(null)}
             />
           )}
           contentContainerStyle={styles.listContent}
