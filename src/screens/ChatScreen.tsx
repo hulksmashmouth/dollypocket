@@ -386,6 +386,7 @@ export function ChatScreen() {
         ttsEnabled={ttsEnabled}
         spotifyUnavailableReason={spotify.unavailableReason}
         spotifyConnected={spotify.connected}
+        spotifyError={spotify.error}
         onSpotifyConnect={spotify.connect}
         onSpotifyDisconnect={spotify.disconnect}
         onSave={handleSaveSettings}

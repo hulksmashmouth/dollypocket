@@ -25,6 +25,7 @@ interface Props {
   ttsEnabled: boolean;
   spotifyUnavailableReason: string | null;
   spotifyConnected: boolean;
+  spotifyError: string | null;
   onSpotifyConnect: () => void;
   onSpotifyDisconnect: () => void;
   onSave: (model: string, knowledgeEnabled: boolean, ttsEnabled: boolean) => void;
@@ -43,6 +44,7 @@ export function SettingsModal({
   ttsEnabled,
   spotifyUnavailableReason,
   spotifyConnected,
+  spotifyError,
   onSpotifyConnect,
   onSpotifyDisconnect,
   onSave,
@@ -220,6 +222,7 @@ export function SettingsModal({
                   {spotifyConnected ? 'Disconnect Spotify' : 'Connect Spotify'}
                 </Text>
               </Pressable>
+              {spotifyError && <Text style={styles.errorText}>{spotifyError}</Text>}
             </>
           )}
 
