@@ -48,8 +48,19 @@ const PALETTE: Record<string, string> = {
 // size of a stock cursor, so it's easy to spot on the kiosk's small panel.
 const SCALE = 3;
 
-/** Paints sprites onto one grid (later ones on top) and returns it as an SVG data URI. */
-function spriteCursor(layers: { rows: string[]; x: number; y: number }[]): string {
+// Chromium only shows a cursor bigger than 32x32 while it fits entirely inside
+// the window; near an edge it skips to the next cursor in the list. So each
+// big cursor is followed by a copy shrunk to fit 32px, which keeps the heart
+// (rather than the stock pointing finger) on buttons near the screen edges.
+const MAX_SMALL_CURSOR = 32;
+
+type Layer = { rows: string[]; x: number; y: number };
+
+/**
+ * Paints sprites onto one grid (later ones on top) and returns it as an SVG
+ * data URI, scaled down if needed so neither side exceeds `maxSize` pixels.
+ */
+function spriteCursor(layers: Layer[], maxSize = Infinity): string {
   const width = Math.max(...layers.map((l) => l.x + Math.max(...l.rows.map((r) => r.length))));
   const height = Math.max(...layers.map((l) => l.y + l.rows.length));
   const rects: string[] = [];
@@ -65,8 +76,10 @@ function spriteCursor(layers: { rows: string[]; x: number; y: number }[]): strin
       })
     );
   }
+  const fit = Math.min(1, maxSize / (Math.max(width, height) * SCALE));
   const svg =
-    `<svg xmlns="http://www.w3.org/2000/svg" width="${width * SCALE}" height="${height * SCALE}" ` +
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${Math.floor(width * SCALE * fit)}" ` +
+    `height="${Math.floor(height * SCALE * fit)}" viewBox="0 0 ${width * SCALE} ${height * SCALE}" ` +
     `shape-rendering="crispEdges">${rects.join('')}</svg>`;
   return `data:image/svg+xml,${encodeURIComponent(svg)}`;
 }
@@ -74,13 +87,15 @@ function spriteCursor(layers: { rows: string[]; x: number; y: number }[]): strin
 export function injectWebCursorStyles(): void {
   if (Platform.OS !== 'web') return;
 
-  const arrow = spriteCursor([{ rows: ARROW, x: 0, y: 0 }]);
-  const heartArrow = spriteCursor([
+  // Big version first, then the 32px fallback. Hotspot = the arrow's tip pixel.
+  const cursor = (layers: Layer[]) =>
+    `url("${spriteCursor(layers)}") ${SCALE} ${SCALE}, ` +
+    `url("${spriteCursor(layers, MAX_SMALL_CURSOR)}") 1 1`;
+  const arrow = cursor([{ rows: ARROW, x: 0, y: 0 }]);
+  const heartArrow = cursor([
     { rows: ARROW, x: 0, y: 0 },
     { rows: HEART, x: 12, y: 11 },
   ]);
-  // Hotspot = the arrow's tip pixel.
-  const hotspot = `${SCALE} ${SCALE}`;
 
   // react-native-web gives every enabled Pressable tabindex="0" plus an
   // atomic `cursor: pointer` class, so key off the tabindex and use
@@ -88,10 +103,10 @@ export function injectWebCursorStyles(): void {
   const style = document.createElement('style');
   style.textContent = `
     html, body {
-      cursor: url("${arrow}") ${hotspot}, auto;
+      cursor: ${arrow}, auto;
     }
     [tabindex="0"], [tabindex="0"] * {
-      cursor: url("${heartArrow}") ${hotspot}, pointer !important;
+      cursor: ${heartArrow}, pointer !important;
     }
     input, textarea, [contenteditable="true"] {
       cursor: text !important;
