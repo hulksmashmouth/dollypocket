@@ -28,6 +28,7 @@ import {
 } from '../components/PixelArt';
 import { PromptSuggestions, shuffledPool } from '../components/PromptSuggestions';
 import { SettingsModal } from '../components/SettingsModal';
+import { ThinkingModal } from '../components/ThinkingModal';
 import { VolumeControl } from '../components/VolumeControl';
 import {
   Conversation,
@@ -204,6 +205,20 @@ export function ChatScreen() {
     }
   };
 
+  // Dolly's reply exists but no words have arrived yet.
+  const lastMessage = messages[messages.length - 1];
+  const thinking = isStreaming && lastMessage?.role === 'assistant' && !lastMessage.content;
+
+  // Backs out of a reply that hasn't started writing, dropping its empty bubble.
+  const handleCancelThinking = () => {
+    abortRef.current?.abort();
+    stopSpeech();
+    setMessages((prev) => {
+      const last = prev[prev.length - 1];
+      return last?.role === 'assistant' && !last.content ? prev.slice(0, -1) : prev;
+    });
+  };
+
   const handlePlayCommand = async (text: string, query: string) => {
     setError(null);
     setIsStreaming(true);
@@ -276,6 +291,13 @@ export function ChatScreen() {
       } catch {
         // Knowledge server unreachable or unconfigured — chat without retrieved context.
       }
+    }
+
+    // Cancelled (or a new chat started) during the knowledge search above.
+    if (controller.signal.aborted) {
+      setIsStreaming(false);
+      abortRef.current = null;
+      return;
     }
 
     // Dolly reads the reply aloud sentence by sentence as it streams in.
@@ -425,6 +447,8 @@ export function ChatScreen() {
         onDelete={handleDeleteConversation}
         onClose={() => setDrawerVisible(false)}
       />
+
+      <ThinkingModal visible={thinking} onCancel={handleCancelThinking} />
 
       <VolumeControl
         visible={volumeVisible}

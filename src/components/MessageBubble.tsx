@@ -5,7 +5,7 @@ import { bevel, blockFont, colors } from '../theme';
 import { ChatMessage } from '../types';
 import { IconButton } from './IconButton';
 import { Panel } from './Panel';
-import { ThinkingIndicator, WritingHeart } from './ThinkingIndicator';
+import { WritingHeart } from './ThinkingIndicator';
 
 interface Props {
   message: ChatMessage;
@@ -42,14 +42,10 @@ export function MessageBubble({ message, ttsUrl, ttsEnabled, writing }: Props) {
       ) : (
         <View style={styles.assistantRow}>
           <Panel variant="raised" style={styles.bubble}>
-            {writing && !message.content ? (
-              <ThinkingIndicator />
-            ) : (
-              <Text style={styles.textAssistant}>
-                {message.content || '…'}
-                {writing && <WritingHeart />}
-              </Text>
-            )}
+            <Text style={styles.textAssistant}>
+              {message.content || '…'}
+              {writing && <WritingHeart />}
+            </Text>
           </Panel>
           {showSpeaker && (
             <IconButton size={30} onPress={toggleSpeech} style={styles.speakerButton}>

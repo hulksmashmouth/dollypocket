@@ -3,11 +3,11 @@ import { AccessibilityInfo, Animated, Easing, Platform, StyleSheet, Text, View }
 import { blockFont, colors, spacing } from '../theme';
 import { PixelButterfly, PixelHeart } from './PixelArt';
 
-// Shown in Dolly's bubble before the first words of a reply arrive: a little
+// Shown full screen (ThinkingModal) before the first words of a reply arrive: a little
 // pixel stage (hearts hopping in a wave, music notes floating up off them, a
 // butterfly flapping back and forth overhead) above a rotating Dolly fact.
 
-const STAGE_WIDTH = 220;
+export const STAGE_WIDTH = 220;
 const STAGE_HEIGHT = 64;
 
 const HEARTS = 3;

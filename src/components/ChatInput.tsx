@@ -48,7 +48,7 @@ export function ChatInput({ disabled, onSend }: Props) {
     <Panel variant="raised" style={styles.container}>
       <TextInput
         ref={inputRef}
-        style={styles.input}
+        style={[styles.input, !text && styles.inputEmpty]}
         value={text}
         onChangeText={setText}
         placeholder="Ask me anything, sugar..."
@@ -98,6 +98,13 @@ const styles = StyleSheet.create({
     fontFamily: blockFont,
     color: colors.textPrimary,
     marginRight: spacing.sm,
+  },
+  // React Native can't style a placeholder on its own, so the empty box takes
+  // the placeholder's size (twice the typed text) and drops back on the first
+  // keystroke.
+  inputEmpty: {
+    fontSize: 32,
+    lineHeight: 40,
   },
   sendButton: {
     flex: 1,
