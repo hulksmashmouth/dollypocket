@@ -36,6 +36,13 @@ export function useSpeechStatus(messageId: string): SpeechStatus {
   );
 }
 
+// True while Dolly's voice is actually coming out of the speaker (not while a
+// reply is still being written or its first clip synthesized). The music
+// ducks under her on this.
+export function useIsSpeaking(): boolean {
+  return useSyncExternalStore(subscribe, () => state.status === 'playing');
+}
+
 export class SpeechSession {
   private buffer = '';
   private consumed = 0;

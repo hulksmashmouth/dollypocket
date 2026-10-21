@@ -38,7 +38,13 @@ import {
 } from '../conversations';
 import { MAX_REPLY_TOKENS, SYSTEM_PROMPT } from '../persona';
 import * as settings from '../settings';
-import { setSpeechVolume, SpeechSession, startSpeech, stopSpeech } from '../speech';
+import {
+  setSpeechVolume,
+  SpeechSession,
+  startSpeech,
+  stopSpeech,
+  useIsSpeaking,
+} from '../speech';
 import { useSpotify } from '../spotify/useSpotify';
 import { blockFont, colors, headerGradient, spacing } from '../theme';
 import { ChatMessage } from '../types';
@@ -50,6 +56,9 @@ const newId = () => `${Date.now()}-${nextId++}`;
 // of being sent to the language model.
 const PLAY_COMMAND = /^\s*play\s+(.+?)\s*$/i;
 const GENERIC_PLAY = /^(some\s+)?(dolly(\s+parton)?|music|something|songs?)$/i;
+
+// While Dolly talks, the music drops to this fraction of its set level.
+const MUSIC_DUCK = 0.25;
 
 // Cuts a reply that hit the token cap back to its last complete sentence, so
 // Dolly never trails off mid-word. Keeps it as-is if no sentence ever ended.
@@ -108,11 +117,15 @@ export function ChatScreen() {
     loadSettings();
   }, [loadSettings]);
 
-  const { setVolume: setMusicVolume } = spotify;
   useEffect(() => {
     setSpeechVolume(settings.gain(sound.voice));
-    setMusicVolume(settings.gain(sound.music));
-  }, [sound, setMusicVolume]);
+  }, [sound.voice]);
+
+  const speaking = useIsSpeaking();
+  const { setVolume: setMusicVolume } = spotify;
+  useEffect(() => {
+    setMusicVolume(settings.gain(sound.music) * (speaking ? MUSIC_DUCK : 1));
+  }, [sound.music, speaking, setMusicVolume]);
 
   // The header's speaker icon shows muted when nothing would make a sound.
   const allMuted =
