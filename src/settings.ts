@@ -69,3 +69,43 @@ export async function getKnowledgeEnabled(): Promise<boolean> {
 export async function setKnowledgeEnabled(enabled: boolean): Promise<void> {
   await AsyncStorage.setItem(KNOWLEDGE_ENABLED_KEY, String(enabled));
 }
+
+// Volume Control (the header's speaker button): Dolly's voice and Spotify
+// each get a 0–10 level plus a mute switch, so muting and unmuting comes back
+// to the same level. Applied live, saved on every change.
+const SOUND_KEY = 'dollypocket.sound';
+export const VOLUME_STEPS = 10;
+
+export interface SoundLevel {
+  level: number;
+  muted: boolean;
+}
+
+export interface SoundSettings {
+  voice: SoundLevel;
+  music: SoundLevel;
+}
+
+export const DEFAULT_SOUND: SoundSettings = {
+  voice: { level: VOLUME_STEPS, muted: false },
+  music: { level: 8, muted: false },
+};
+
+// The 0.0–1.0 gain a player should use for this channel.
+export function gain({ level, muted }: SoundLevel): number {
+  return muted ? 0 : level / VOLUME_STEPS;
+}
+
+export async function getSound(): Promise<SoundSettings> {
+  const stored = await AsyncStorage.getItem(SOUND_KEY);
+  if (!stored) return DEFAULT_SOUND;
+  try {
+    return { ...DEFAULT_SOUND, ...JSON.parse(stored) };
+  } catch {
+    return DEFAULT_SOUND;
+  }
+}
+
+export async function setSound(sound: SoundSettings): Promise<void> {
+  await AsyncStorage.setItem(SOUND_KEY, JSON.stringify(sound));
+}

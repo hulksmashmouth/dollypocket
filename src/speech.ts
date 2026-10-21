@@ -16,6 +16,9 @@ const BOUNDARY = /[.!?…]["'”’)*_]*\s+|\n+/g;
 let state: { messageId: string | null; status: SpeechStatus } = { messageId: null, status: 'idle' };
 const listeners = new Set<() => void>();
 let current: SpeechSession | null = null;
+// 0.0–1.0, set from Volume Control. Applies to the clip playing now and every
+// clip after it.
+let volume = 1;
 
 function setState(messageId: string | null, status: SpeechStatus) {
   state = { messageId, status };
@@ -84,6 +87,10 @@ export class SpeechSession {
     }
   }
 
+  applyVolume() {
+    if (this.player) this.player.volume = volume;
+  }
+
   private enqueue(text: string) {
     if (!text.trim()) return;
     // Synthesize one chunk at a time (a Pi can't usefully run several at
@@ -121,6 +128,7 @@ export class SpeechSession {
 
     const player = createAudioPlayer({ uri: url });
     this.player = player;
+    player.volume = volume;
     player.addListener('playbackStatusUpdate', (status) => {
       if (!status.didJustFinish || this.player !== player) return;
       player.remove();
@@ -149,4 +157,9 @@ export function startSpeech(ttsUrl: string, messageId: string): SpeechSession {
 
 export function stopSpeech() {
   current?.stop();
+}
+
+export function setSpeechVolume(value: number) {
+  volume = value;
+  current?.applyVolume();
 }

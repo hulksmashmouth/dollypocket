@@ -28,6 +28,7 @@ import {
 } from '../components/PixelArt';
 import { PromptSuggestions, shuffledPool } from '../components/PromptSuggestions';
 import { SettingsModal } from '../components/SettingsModal';
+import { VolumeControl } from '../components/VolumeControl';
 import {
   Conversation,
   deleteConversation,
@@ -37,7 +38,7 @@ import {
 } from '../conversations';
 import { MAX_REPLY_TOKENS, SYSTEM_PROMPT } from '../persona';
 import * as settings from '../settings';
-import { SpeechSession, startSpeech, stopSpeech } from '../speech';
+import { setSpeechVolume, SpeechSession, startSpeech, stopSpeech } from '../speech';
 import { useSpotify } from '../spotify/useSpotify';
 import { blockFont, colors, headerGradient, spacing } from '../theme';
 import { ChatMessage } from '../types';
@@ -66,6 +67,8 @@ export function ChatScreen() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
   const [settingsVisible, setSettingsVisible] = useState(false);
+  const [volumeVisible, setVolumeVisible] = useState(false);
+  const [sound, setSound] = useState(settings.DEFAULT_SOUND);
   const [drawerVisible, setDrawerVisible] = useState(false);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeConversationId, setActiveConversationIdState] = useState<string | null>(null);
@@ -98,11 +101,27 @@ export function ChatScreen() {
     setKnowledgeEnabled(await settings.getKnowledgeEnabled());
     setTtsUrl(settings.guessDefaultTtsUrl());
     setTtsEnabled(await settings.getTtsEnabled());
+    setSound(await settings.getSound());
   }, []);
 
   useEffect(() => {
     loadSettings();
   }, [loadSettings]);
+
+  const { setVolume: setMusicVolume } = spotify;
+  useEffect(() => {
+    setSpeechVolume(settings.gain(sound.voice));
+    setMusicVolume(settings.gain(sound.music));
+  }, [sound, setMusicVolume]);
+
+  // The header's speaker icon shows muted when nothing would make a sound.
+  const allMuted =
+    settings.gain(sound.voice) === 0 && (!spotify.connected || settings.gain(sound.music) === 0);
+
+  const handleSoundChange = (next: settings.SoundSettings) => {
+    setSound(next);
+    settings.setSound(next);
+  };
 
   // Every launch starts on a fresh chat; past chats stay a tap away in the
   // drawer, so only the list needs loading here.
@@ -332,9 +351,18 @@ export function ChatScreen() {
           </View>
         </View>
 
-        <IconButton size={36} onPress={() => setSettingsVisible(true)} accessibilityLabel="Settings">
-          <Ionicons name="settings-sharp" size={20} color={colors.textPrimary} />
-        </IconButton>
+        <View style={styles.headerButtons}>
+          <IconButton size={36} onPress={() => setVolumeVisible(true)} accessibilityLabel="Volume">
+            <Ionicons
+              name={allMuted ? 'volume-mute-sharp' : 'volume-high-sharp'}
+              size={20}
+              color={colors.textPrimary}
+            />
+          </IconButton>
+          <IconButton size={36} onPress={() => setSettingsVisible(true)} accessibilityLabel="Settings">
+            <Ionicons name="settings-sharp" size={20} color={colors.textPrimary} />
+          </IconButton>
+        </View>
       </Panel>
 
       <KeyboardAvoidingView
@@ -385,6 +413,14 @@ export function ChatScreen() {
         onClose={() => setDrawerVisible(false)}
       />
 
+      <VolumeControl
+        visible={volumeVisible}
+        sound={sound}
+        showMusic={spotify.connected}
+        onChange={handleSoundChange}
+        onClose={() => setVolumeVisible(false)}
+      />
+
       <SettingsModal
         visible={settingsVisible}
         baseUrl={baseUrl}
@@ -428,6 +464,10 @@ const styles = StyleSheet.create({
   },
   headerCompact: {
     paddingHorizontal: spacing.sm,
+  },
+  headerButtons: {
+    flexDirection: 'row',
+    gap: spacing.xs,
   },
   titleRow: {
     flex: 1,

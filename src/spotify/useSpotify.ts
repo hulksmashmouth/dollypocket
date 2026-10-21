@@ -20,6 +20,7 @@ interface SdkPlayer {
   pause(): Promise<void>;
   nextTrack(): Promise<void>;
   previousTrack(): Promise<void>;
+  setVolume(volume: number): Promise<void>;
 }
 
 export interface NowPlaying {
@@ -57,6 +58,9 @@ export function useSpotify() {
   // Set by stop(): the paused track's state updates are ignored so the
   // now-playing bar stays hidden until the next playDolly().
   const stoppedRef = useRef(false);
+  // Volume Control's music level, kept here so a player created after it was
+  // set (the SDK loads asynchronously) still starts at the right volume.
+  const volumeRef = useRef(0.8);
 
   useEffect(() => {
     if (!supported) return;
@@ -81,7 +85,7 @@ export function useSpotify() {
 
       const player: SdkPlayer = new (window as any).Spotify.Player({
         name: 'Dolly Pocket',
-        volume: 0.8,
+        volume: volumeRef.current,
         getOAuthToken: (callback: (token: string) => void) => {
           getAccessToken().then((token) => token && callback(token));
         },
@@ -156,6 +160,11 @@ export function useSpotify() {
     setError(null);
   }, []);
 
+  const setVolume = useCallback((volume: number) => {
+    volumeRef.current = volume;
+    playerRef.current?.setVolume(volume);
+  }, []);
+
   // Searches Dolly's tracks and plays them. With no query, queues up a spread
   // of her songs. Resolves with what's now playing (empty if nothing matched).
   const playDolly = useCallback(async (query: string | null): Promise<SpotifyTrack[]> => {
@@ -194,5 +203,6 @@ export function useSpotify() {
     togglePlay: () => playerRef.current?.togglePlay(),
     nextTrack: () => playerRef.current?.nextTrack(),
     previousTrack: () => playerRef.current?.previousTrack(),
+    setVolume,
   };
 }
