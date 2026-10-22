@@ -36,6 +36,11 @@ const OLLAMA_URL = process.env.OLLAMA_URL ?? 'http://localhost:11434';
 const EMBED_MODEL = process.env.EMBED_MODEL ?? 'nomic-embed-text';
 const CHUNK_SIZE = 800;
 
+// Pages that sit in Category:Dolly Parton only because they're named after
+// her. Their text is all about something else, and a question with a bare
+// "Dolly" in it matches them better than her own pages.
+const OFF_TOPIC = new Set(['Dolly (sheep)']);
+
 const [topic, ...rest] = process.argv.slice(2);
 
 if (!topic || rest.length === 0) {
@@ -126,7 +131,8 @@ async function expandCategory(name, depth = 0) {
         console.log(`  descending into subcategory "${subcatName}"...`);
         titles.push(...(await expandCategory(subcatName, depth + 1)));
       }
-    } else {
+    } else if (member.ns === 0 && !OFF_TOPIC.has(member.title)) {
+      // ns 0 = articles; skips templates and other non-article pages.
       titles.push(member.title);
     }
   }

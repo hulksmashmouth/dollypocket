@@ -271,9 +271,11 @@ export function ChatScreen() {
     ];
     if (knowledgeEnabled) {
       // The previous question rides along so a follow-up like "when did she
-      // write it?" still finds the song the conversation is about.
+      // write it?" still finds the song the conversation is about. Every
+      // question here is about Dolly Parton, so the search says so: a bare
+      // "Dolly" or "she" otherwise pulls in other Dollys and her sisters.
       const previousQuestion = [...messages].reverse().find((m) => m.role === 'user')?.content;
-      const query = previousQuestion ? `${previousQuestion}\n${text}` : text;
+      const query = `Dolly Parton: ${previousQuestion ? `${previousQuestion}\n${text}` : text}`;
       try {
         const results = await searchKnowledge(knowledgeUrl, query, 5);
         if (results.length > 0) {
