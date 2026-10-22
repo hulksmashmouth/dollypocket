@@ -28,7 +28,7 @@ import {
 } from '../components/PixelArt';
 import { PromptSuggestions, shuffledPool } from '../components/PromptSuggestions';
 import { SettingsModal } from '../components/SettingsModal';
-import { ThinkingModal } from '../components/ThinkingModal';
+import { ThinkingModal, ThinkingStage } from '../components/ThinkingModal';
 import { VolumeControl } from '../components/VolumeControl';
 import {
   Conversation,
@@ -61,6 +61,11 @@ const GENERIC_PLAY = /^(some\s+)?(dolly(\s+parton)?|music|something|songs?)$/i;
 // While Dolly talks, the music drops to this fraction of its set level.
 const MUSIC_DUCK = 0.25;
 
+// The thinking modal can't be dismissed, so a reply whose first words haven't
+// arrived by now (Ollama stopped or stuck) is given up on, which closes it.
+// Normal on the Pi is ~35s.
+const FIRST_TOKEN_TIMEOUT_MS = 120000;
+
 // Cuts a reply that hit the token cap back to its last complete sentence, so
 // Dolly never trails off mid-word. Keeps it as-is if no sentence ever ended.
 function trimToLastSentence(text: string): string {
@@ -76,6 +81,7 @@ export function ChatScreen() {
   const heartsLift = baselineLift(HEART_ROWS, titleFontSize);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
+  const [thinkingStage, setThinkingStage] = useState<ThinkingStage>('searching');
   const [settingsVisible, setSettingsVisible] = useState(false);
   const [volumeVisible, setVolumeVisible] = useState(false);
   const [sound, setSound] = useState(settings.DEFAULT_SOUND);
@@ -209,15 +215,12 @@ export function ChatScreen() {
   const lastMessage = messages[messages.length - 1];
   const thinking = isStreaming && lastMessage?.role === 'assistant' && !lastMessage.content;
 
-  // Backs out of a reply that hasn't started writing, dropping its empty bubble.
-  const handleCancelThinking = () => {
-    abortRef.current?.abort();
-    stopSpeech();
+  // Drops Dolly's reply bubble if no words ever arrived in it.
+  const dropEmptyReply = () =>
     setMessages((prev) => {
       const last = prev[prev.length - 1];
       return last?.role === 'assistant' && !last.content ? prev.slice(0, -1) : prev;
     });
-  };
 
   const handlePlayCommand = async (text: string, query: string) => {
     setError(null);
@@ -261,6 +264,7 @@ export function ChatScreen() {
     const nextMessages = [...messages, userMessage];
     setMessages([...nextMessages, assistantMessage]);
     setIsStreaming(true);
+    setThinkingStage(knowledgeEnabled ? 'searching' : 'thinking');
 
     const controller = new AbortController();
     abortRef.current = controller;
@@ -309,10 +313,17 @@ export function ChatScreen() {
       return;
     }
 
+    setThinkingStage('thinking');
+
     // Dolly reads the reply aloud sentence by sentence as it streams in.
     const speech: SpeechSession | null =
       ttsEnabled && ttsUrl ? startSpeech(ttsUrl, assistantMessage.id) : null;
     let reply = '';
+    let timedOut = false;
+    const firstTokenTimer = setTimeout(() => {
+      timedOut = true;
+      controller.abort();
+    }, FIRST_TOKEN_TIMEOUT_MS);
 
     try {
       const { truncated } = await streamChat(
@@ -320,6 +331,7 @@ export function ChatScreen() {
         model,
         apiMessages,
         (delta) => {
+          clearTimeout(firstTokenTimer);
           reply += delta;
           speech?.push(delta);
           setMessages((prev) =>
@@ -331,6 +343,12 @@ export function ChatScreen() {
         controller.signal,
         MAX_REPLY_TOKENS
       );
+      if (timedOut) {
+        speech?.stop();
+        dropEmptyReply();
+        setError("Dolly's not answerin' — is Ollama running?");
+        return;
+      }
       if (truncated) {
         reply = trimToLastSentence(reply);
         setMessages((prev) =>
@@ -342,6 +360,7 @@ export function ChatScreen() {
       speech?.stop();
       setError(err instanceof OllamaError ? err.message : 'Something went wrong.');
     } finally {
+      clearTimeout(firstTokenTimer);
       setIsStreaming(false);
       abortRef.current = null;
     }
@@ -457,7 +476,7 @@ export function ChatScreen() {
         onClose={() => setDrawerVisible(false)}
       />
 
-      <ThinkingModal visible={thinking} onCancel={handleCancelThinking} />
+      <ThinkingModal visible={thinking} stage={thinkingStage} />
 
       <VolumeControl
         visible={volumeVisible}
