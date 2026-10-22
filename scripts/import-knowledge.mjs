@@ -217,11 +217,20 @@ async function main() {
   const existing = await loadExisting();
   const keptChunks = existing.filter((c) => c.topic !== topic);
   const newChunks = [];
+  // Different titles can redirect to the same article (a category lists both
+  // "Rachel Dennison" and "Rachel Parton George"), so dedupe on where each one
+  // actually lands too, not just on the titles asked for.
+  const importedPages = new Set();
 
   for (const title of titleJobs) {
     console.log(`Fetching "${title}"...`);
     try {
       const { title: resolvedTitle, text } = await fetchArticleText(title);
+      if (importedPages.has(resolvedTitle)) {
+        console.log(`  (redirects to "${resolvedTitle}", already imported)`);
+        continue;
+      }
+      importedPages.add(resolvedTitle);
       if (!text) {
         console.warn(`  (no extract text returned, skipping)`);
         continue;
