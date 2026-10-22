@@ -29,20 +29,27 @@ Environment=WLR_NO_HARDWARE_CURSORS=1
 # Permission denied") and the text console stays visible instead. A short
 # delay avoids the race; a real restart works every time once seatd's settled.
 ExecStartPre=/bin/sleep 3
-ExecStart=/usr/bin/cage -- /usr/bin/chromium \
-  --kiosk \
-  --noerrdialogs \
-  --disable-infobars \
-  --disable-translate \
-  --no-first-run \
-  --autoplay-policy=no-user-gesture-required \
-  --check-for-update-interval=31536000 \
-  http://127.0.0.1:8080
-# cage's own Wayland compositor rotation, not the kernel's fbcon-only
-# `video=...,rotate=` cmdline flag (that one only affects the text console —
-# wlroots clients like cage/Chromium need this instead). Adjust the panel
-# name/transform to match your display; `wlr-randr` (no args) lists both.
-ExecStartPost=/bin/sh -c 'sleep 6 && WAYLAND_DISPLAY=wayland-0 /usr/bin/wlr-randr --output HDMI-A-2 --transform 90'
+# Rotation runs first, inside cage's session, before Chromium even starts:
+# cage hands its child its own WAYLAND_DISPLAY, so wlr-randr can apply the
+# transform the moment the compositor is up (a few quick retries cover the
+# output not being ready yet). This is cage's own Wayland compositor
+# rotation, not the kernel's fbcon-only `video=...,rotate=` cmdline flag
+# (that one only affects the text console). Adjust the panel name/transform
+# to match your display; `wlr-randr` (no args) lists both.
+ExecStart=/usr/bin/cage -- /bin/sh -c '\
+  for try in 1 2 3 4 5 6 7 8 9 10; do \
+    /usr/bin/wlr-randr --output HDMI-A-2 --transform 90 && break; \
+    sleep 0.1; \
+  done; \
+  exec /usr/bin/chromium \
+    --kiosk \
+    --noerrdialogs \
+    --disable-infobars \
+    --disable-translate \
+    --no-first-run \
+    --autoplay-policy=no-user-gesture-required \
+    --check-for-update-interval=31536000 \
+    http://127.0.0.1:8080'
 Restart=on-failure
 RestartSec=3
 

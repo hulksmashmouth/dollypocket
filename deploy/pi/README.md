@@ -225,9 +225,10 @@ curl localhost:11436/health      # should report the configured Piper voice
   ```
   lists your actual output name and current transform — confirm it matches
   before changing anything. `dollypocket-kiosk.service` already applies
-  `--transform 90` to `HDMI-A-2` via `ExecStartPost` on every start; adjust
-  the output name/transform value (`90`/`180`/`270`/`flipped`/etc.) to match
-  your panel and mounting.
+  `--transform 90` to `HDMI-A-2` as the first command inside cage's session,
+  before Chromium launches, so the app never appears unrotated; adjust the
+  output name/transform value (`90`/`180`/`270`/`flipped`/etc.) in its
+  `ExecStart` to match your panel and mounting.
 
 - **Boots to a full desktop instead of the kiosk, or `dollypocket-kiosk`
   intermittently fails with DRM errors** (e.g. `Failed to set DPMS property:
