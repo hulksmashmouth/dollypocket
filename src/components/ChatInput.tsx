@@ -1,13 +1,6 @@
+import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useRef, useState } from 'react';
-import {
-  ActivityIndicator,
-  Platform,
-  Pressable,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { ActivityIndicator, Platform, Pressable, StyleSheet, TextInput, View } from 'react-native';
 import { Panel } from './Panel';
 import { bevel, blockFont, colors, spacing } from '../theme';
 
@@ -57,14 +50,16 @@ export function ChatInput({ disabled, onSend }: Props) {
         numberOfLines={1}
         editable={!disabled}
       />
-      <Pressable onPress={send} disabled={!canSend}>
+      <Pressable onPress={send} disabled={!canSend} accessibilityRole="button" accessibilityLabel="Send">
         <View style={[styles.sendButton, canSend ? styles.sendButtonEnabled : styles.sendButtonDisabled]}>
           {disabled ? (
             <ActivityIndicator color={colors.textSecondary} size="small" />
           ) : (
-            <Text style={[styles.sendButtonText, !canSend && styles.sendButtonTextDisabled]}>
-              Send
-            </Text>
+            <Ionicons
+              name="send-sharp"
+              size={20}
+              color={canSend ? colors.textPrimary : colors.textMuted}
+            />
           )}
         </View>
       </Pressable>
@@ -100,11 +95,11 @@ const styles = StyleSheet.create({
     marginRight: spacing.sm,
   },
   // React Native can't style a placeholder on its own, so the empty box takes
-  // the placeholder's size (twice the typed text) and drops back on the first
+  // the placeholder's size (1.5x the typed text) and drops back on the first
   // keystroke.
   inputEmpty: {
-    fontSize: 32,
-    lineHeight: 40,
+    fontSize: 24,
+    lineHeight: 30,
   },
   sendButton: {
     flex: 1,
@@ -113,21 +108,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     justifyContent: 'center',
     alignItems: 'center',
-    minWidth: 64,
+    minWidth: 52,
   },
   sendButtonEnabled: {
     backgroundColor: colors.accent,
   },
   sendButtonDisabled: {
     backgroundColor: colors.bg,
-  },
-  sendButtonText: {
-    color: colors.textPrimary,
-    fontFamily: blockFont,
-    fontWeight: '700',
-    fontSize: 16,
-  },
-  sendButtonTextDisabled: {
-    color: colors.textMuted,
   },
 });
