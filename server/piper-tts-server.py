@@ -20,7 +20,7 @@ from pathlib import Path
 import numpy as np
 from piper import PiperVoice, SynthesisConfig
 
-from drawl import drawl, southern_text
+from drawl import DRAWL_VERSION, drawl, southern_text
 from loudness import louder
 from tts_http import serve
 
@@ -31,7 +31,7 @@ DRAWL = os.environ.get("PIPER_DRAWL", "1") != "0"
 LOUDER = os.environ.get("PIPER_LOUDER", "1") != "0"
 PORT = int(os.environ.get("PORT", "11436"))
 
-VOICE_LABEL = f"piper {VOICE} @{SPEED}{' +drawl' if DRAWL else ''}{' +louder' if LOUDER else ''}"
+VOICE_LABEL = f"piper {VOICE} @{SPEED}{f' +drawl{DRAWL_VERSION}' if DRAWL else ''}{' +louder' if LOUDER else ''}"
 
 voice = PiperVoice.load(str(VOICES_DIR / f"{VOICE}.onnx"))
 # Piper's length_scale is duration, the inverse of speed; slower is part of a drawl.

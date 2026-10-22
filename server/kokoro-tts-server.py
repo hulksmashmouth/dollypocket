@@ -10,6 +10,7 @@ would otherwise dominate every request. Voice is set by:
 
 import os
 
+from drawl import DRAWL_VERSION
 from kokoro_voice import blend_voice, load_kokoro, synthesize_wav
 from tts_http import serve
 
@@ -18,7 +19,7 @@ SPEED = float(os.environ.get("KOKORO_SPEED", "0.9"))
 DRAWL = os.environ.get("KOKORO_DRAWL", "1") != "0"
 PORT = int(os.environ.get("PORT", "11436"))
 
-VOICE_LABEL = f"kokoro {VOICE} @{SPEED}{' +drawl' if DRAWL else ''}"
+VOICE_LABEL = f"kokoro {VOICE} @{SPEED}{f' +drawl{DRAWL_VERSION}' if DRAWL else ''}"
 
 kokoro = load_kokoro()
 style = blend_voice(kokoro, VOICE)
