@@ -40,7 +40,9 @@ async function embedQuery(text) {
   const res = await fetch(`${OLLAMA_URL}/api/embed`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ model: EMBED_MODEL, input: text }),
+    // Matches the "search_document: " prefix chunks are embedded with (see
+    // scripts/import-knowledge.mjs) — nomic-embed-text's retrieval task pair.
+    body: JSON.stringify({ model: EMBED_MODEL, input: `search_query: ${text}` }),
   });
   if (!res.ok) throw new Error(`Ollama embed request failed (status ${res.status}): ${await res.text()}`);
   const data = await res.json();

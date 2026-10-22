@@ -179,7 +179,11 @@ async function embedIntoChunks(id, title, text, sink) {
   const pieces = chunkText(text);
   console.log(`  ${pieces.length} chunks, embedding...`);
   for (let i = 0; i < pieces.length; i++) {
-    const embedding = await embed(pieces[i]);
+    // nomic-embed-text is trained with task prefixes (and knowledge-server.mjs
+    // embeds queries with the matching "search_query: "). The article title
+    // goes in too, so a paragraph that only says "the song" still lands near
+    // questions about it. Only the embedding sees this; `text` stays clean.
+    const embedding = await embed(`search_document: ${title}\n\n${pieces[i]}`);
     sink.push({ id: `${id}:${i}`, topic, title, text: pieces[i], embedding });
   }
 }

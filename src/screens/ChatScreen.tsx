@@ -270,8 +270,12 @@ export function ChatScreen() {
       ...nextMessages,
     ];
     if (knowledgeEnabled) {
+      // The previous question rides along so a follow-up like "when did she
+      // write it?" still finds the song the conversation is about.
+      const previousQuestion = [...messages].reverse().find((m) => m.role === 'user')?.content;
+      const query = previousQuestion ? `${previousQuestion}\n${text}` : text;
       try {
-        const results = await searchKnowledge(knowledgeUrl, text, 4);
+        const results = await searchKnowledge(knowledgeUrl, query, 5);
         if (results.length > 0) {
           const context = results
             .map((r) => `[${r.topic} — ${r.title}]\n${r.text}`)
@@ -282,8 +286,11 @@ export function ChatScreen() {
               id: 'knowledge-context',
               role: 'system',
               content:
-                'Relevant background from an imported knowledge base. ' +
-                `Use it only if helpful; ignore if irrelevant.\n\n${context}`,
+                "Facts from Dolly Parton's Wikipedia articles that may bear on the user's " +
+                'message. For anything about Dolly Parton — her life, family, songs, albums, ' +
+                'films, awards, or Dollywood — rely on these facts and never invent dates, ' +
+                "titles, names, or numbers. If the answer isn't here, say you're not sure " +
+                `instead of guessing. Ignore these facts if the message isn't about her.\n\n${context}`,
             },
             ...nextMessages,
           ];
